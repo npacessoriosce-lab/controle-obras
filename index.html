@@ -133,6 +133,7 @@ body{overflow-x:hidden}
 </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <div id="authScreen" style="position:fixed;inset:0;background:#f3f4f6;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px">
   <div style="width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 40px #0002">
     <div style="text-align:center;margin-bottom:18px"><div style="font-size:28px;font-weight:900;color:#0b1f3a">CONTROLE DE OBRAS</div><div style="color:#64748b;font-size:13px;margin-top:5px">Acesso compartilhado entre seus aparelhos</div></div>
@@ -143,7 +144,6 @@ body{overflow-x:hidden}
     <button type="button" class="btn light full" onclick="criarConta()">Criar acesso</button>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <div class="app">
 <header class="topbar">
   <button type="button" class="mobileMenu" onclick="toggleSidebar()">☰</button>
@@ -644,7 +644,7 @@ function gerarRecibo(id){
     <button type="button" class="btn light full" onclick="criarConta()">Criar acesso</button>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><div class="actions"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button onclick="window.close()">Fechar</button></div><div class="receiptBox"><div class="receiptHeader"><div class="receiptLogo">'+logo+'</div><div><div class="receiptCompany">'+esc(empresa)+'</div><div class="receiptTitle">RECIBO DE PAGAMENTO SEMANAL</div></div></div>'+
+<div class="actions"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button onclick="window.close()">Fechar</button></div><div class="receiptBox"><div class="receiptHeader"><div class="receiptLogo">'+logo+'</div><div><div class="receiptCompany">'+esc(empresa)+'</div><div class="receiptTitle">RECIBO DE PAGAMENTO SEMANAL</div></div></div>'+
     '<div class="receiptLine"><span>Cliente</span><b>'+esc(o.cliente||'Não informado')+'</b></div>'+
     '<div class="receiptLine"><span>Obra</span><b>'+esc(o.nome)+'</b></div>'+
     '<div class="receiptLine"><span>Período da semana</span><b>'+fmtDate(monday(inicio))+' a '+fmtDate(fim)+'</b></div>'+
