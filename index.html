@@ -133,6 +133,17 @@ body{overflow-x:hidden}
 </style>
 </head>
 <body>
+<div id="authScreen" style="position:fixed;inset:0;background:#f3f4f6;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px">
+  <div style="width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 40px #0002">
+    <div style="text-align:center;margin-bottom:18px"><div style="font-size:28px;font-weight:900;color:#0b1f3a">CONTROLE DE OBRAS</div><div style="color:#64748b;font-size:13px;margin-top:5px">Acesso compartilhado entre seus aparelhos</div></div>
+    <div id="authMsg" class="muted" style="min-height:18px;margin-bottom:8px"></div>
+    <label>E-mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="Seu e-mail">
+    <label>Senha</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo de 6 caracteres">
+    <button type="button" class="btn full" onclick="entrar()">Entrar</button>
+    <button type="button" class="btn light full" onclick="criarConta()">Criar acesso</button>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <div class="app">
 <header class="topbar">
   <button type="button" class="mobileMenu" onclick="toggleSidebar()">☰</button>
@@ -249,10 +260,77 @@ body{overflow-x:hidden}
 
 <script>
 const KEY='controle_obras_v1';
+const SUPABASE_URL='https://wagfwopqxwlntatcoyeu.supabase.co';
+const SUPABASE_KEY='sb_publishable_Moro10F_vxJ8wN87CcbsGg_n8_k_EUI';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let db=JSON.parse(localStorage.getItem(KEY)||'null')||{empresa:'Controle de Obras',logo:'',obras:[],recebimentos:[],funcionarios:[],jornadas:{},pagamentos:[],despesas:[],acrescimos:[]};
+let cloudReady=false, syncing=false, lastCloudUpdated='';
 const brl=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function save(){localStorage.setItem(KEY,JSON.stringify(db));}
+function save(){localStorage.setItem(KEY,JSON.stringify(db)); if(cloudReady) cloudSave();}
+async function cloudSave(){
+  if(syncing)return; syncing=true;
+  try{
+    const stamp=new Date().toISOString();
+    const {data,error}=await sb.from('controle_obras_dados').upsert({id:1,dados:db,atualizado_em:stamp}).select('atualizado_em').single();
+    if(error) throw error;
+    lastCloudUpdated=data?.atualizado_em||stamp;
+  }catch(e){console.error('Erro ao sincronizar:',e);toast('Salvo neste aparelho; falha na nuvem');}
+  finally{syncing=false;}
+}
+async function cloudLoad(){
+  try{
+    const {data,error}=await sb.from('controle_obras_dados').select('dados,atualizado_em').eq('id',1).single();
+    if(error) throw error;
+    const cloud=data?.dados;
+    lastCloudUpdated=data?.atualizado_em||'';
+    const local=JSON.parse(localStorage.getItem(KEY)||'null');
+    const hasCloud=cloud && Object.keys(cloud).length && (cloud.obras?.length||cloud.recebimentos?.length||cloud.funcionarios?.length||cloud.pagamentos?.length||cloud.despesas?.length||cloud.acrescimos?.length||cloud.empresa||cloud.logo);
+    if(hasCloud){ db=cloud; localStorage.setItem(KEY,JSON.stringify(db)); }
+    else if(local){ db=local; await cloudSave(); }
+    else { await cloudSave(); }
+    cloudReady=true; renderAll();
+    document.getElementById('authScreen').style.display='none';
+    toast('Sincronização ativada');
+  }catch(e){
+    console.error(e);
+    document.getElementById('authMsg').textContent='Não foi possível conectar ao banco. Verifique o acesso.';
+    document.getElementById('authMsg').style.color='#b08b00';
+  }
+}
+async function entrar(){
+  const email=document.getElementById('authEmail').value.trim(); const password=document.getElementById('authPassword').value;
+  if(!email||!password)return setAuthMsg('Informe e-mail e senha.');
+  setAuthMsg('Entrando...');
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error)return setAuthMsg(error.message);
+  await cloudLoad();
+}
+async function criarConta(){
+  const email=document.getElementById('authEmail').value.trim(); const password=document.getElementById('authPassword').value;
+  if(!email||!password)return setAuthMsg('Informe e-mail e senha.');
+  if(password.length<6)return setAuthMsg('A senha precisa ter pelo menos 6 caracteres.');
+  setAuthMsg('Criando acesso...');
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error)return setAuthMsg(error.message);
+  if(data.session) await cloudLoad();
+  else setAuthMsg('Acesso criado. Verifique seu e-mail e depois entre no sistema.');
+}
+function setAuthMsg(t){const x=document.getElementById('authMsg');x.textContent=t;x.style.color='#64748b';}
+async function refreshCloud(){
+  if(!cloudReady||syncing)return;
+  try{
+    const {data,error}=await sb.from('controle_obras_dados').select('dados,atualizado_em').eq('id',1).single();
+    if(error)throw error;
+    if(data?.atualizado_em && data.atualizado_em!==lastCloudUpdated && new Date(data.atualizado_em)>new Date(lastCloudUpdated||0)){
+      db=data.dados||db; lastCloudUpdated=data.atualizado_em; localStorage.setItem(KEY,JSON.stringify(db)); renderAll();
+    }
+  }catch(e){console.warn('Falha na atualização:',e)}
+}
+sb.auth.getSession().then(({data})=>{if(data.session) cloudLoad();});
+sb.auth.onAuthStateChange((event,session)=>{if(session && event==='SIGNED_IN') cloudLoad();});
+setInterval(refreshCloud,3000);
+window.addEventListener('focus',refreshCloud);
 function toast(t){let x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
 function today(){return new Date().toISOString().slice(0,10)}
 function monday(d=new Date()){d=new Date(d);d.setHours(0,0,0,0);let day=d.getDay();let diff=day===0?-6:1-day;d.setDate(d.getDate()+diff);return d.toISOString().slice(0,10)}
@@ -555,7 +633,18 @@ function gerarRecibo(id){
   const texto='Recebemos de <b>'+esc(o.cliente||'cliente')+'</b> a importância de <b>'+brl(r.valor)+'</b>, referente ao pagamento semanal da obra <b>'+esc(o.nome)+'</b>.';
   const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Recibo - '+esc(o.nome)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+
     'body{margin:0;background:#f4f6f8;padding:24px;font-family:Arial,sans-serif;color:#172033}.receiptBox{max-width:760px;margin:0 auto;background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:28px;box-shadow:0 8px 30px rgba(15,23,42,.08)}.receiptHeader{display:flex;align-items:center;gap:16px;border-bottom:3px solid #f1c40f;padding-bottom:18px;margin-bottom:24px}.receiptLogo{width:78px;height:78px;border-radius:12px;background:#102a43;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;text-align:center;overflow:hidden;flex:none}.receiptLogo img{width:100%;height:100%;object-fit:contain;background:#fff}.receiptCompany{font-size:22px;font-weight:800;color:#102a43}.receiptTitle{font-size:18px;font-weight:800;margin-top:4px}.receiptLine{display:flex;justify-content:space-between;gap:15px;padding:12px 0;border-bottom:1px solid #e5e7eb}.receiptAmount{font-size:30px;font-weight:900;color:#102a43;text-align:center;background:#fff8d8;border:1px solid #f1c40f;border-radius:12px;padding:20px;margin:24px 0}.receiptText{font-size:15px;line-height:1.6;margin:20px 0}.receiptSign{margin-top:55px;text-align:center}.receiptSignLine{width:280px;border-top:1px solid #172033;margin:0 auto 8px}.actions{text-align:center;margin:18px auto;max-width:760px}.actions button{padding:12px 18px;border:0;border-radius:8px;background:#102a43;color:white;font-weight:700;margin:4px;cursor:pointer}@media print{body{background:#fff;padding:0}.actions{display:none}.receiptBox{box-shadow:none;border:0}}'+
-    '</style></head><body><div class="actions"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button onclick="window.close()">Fechar</button></div><div class="receiptBox"><div class="receiptHeader"><div class="receiptLogo">'+logo+'</div><div><div class="receiptCompany">'+esc(empresa)+'</div><div class="receiptTitle">RECIBO DE PAGAMENTO SEMANAL</div></div></div>'+
+    '</style></head><body>
+<div id="authScreen" style="position:fixed;inset:0;background:#f3f4f6;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px">
+  <div style="width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 40px #0002">
+    <div style="text-align:center;margin-bottom:18px"><div style="font-size:28px;font-weight:900;color:#0b1f3a">CONTROLE DE OBRAS</div><div style="color:#64748b;font-size:13px;margin-top:5px">Acesso compartilhado entre seus aparelhos</div></div>
+    <div id="authMsg" class="muted" style="min-height:18px;margin-bottom:8px"></div>
+    <label>E-mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="Seu e-mail">
+    <label>Senha</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo de 6 caracteres">
+    <button type="button" class="btn full" onclick="entrar()">Entrar</button>
+    <button type="button" class="btn light full" onclick="criarConta()">Criar acesso</button>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><div class="actions"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button onclick="window.close()">Fechar</button></div><div class="receiptBox"><div class="receiptHeader"><div class="receiptLogo">'+logo+'</div><div><div class="receiptCompany">'+esc(empresa)+'</div><div class="receiptTitle">RECIBO DE PAGAMENTO SEMANAL</div></div></div>'+
     '<div class="receiptLine"><span>Cliente</span><b>'+esc(o.cliente||'Não informado')+'</b></div>'+
     '<div class="receiptLine"><span>Obra</span><b>'+esc(o.nome)+'</b></div>'+
     '<div class="receiptLine"><span>Período da semana</span><b>'+fmtDate(monday(inicio))+' a '+fmtDate(fim)+'</b></div>'+
