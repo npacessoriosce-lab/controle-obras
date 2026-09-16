@@ -507,7 +507,42 @@ function openObra(id){
 }
 function renderReceber(){
  fillSelect('rObra');rData.value=rData.value||today();
- receberList.innerHTML=db.recebimentos.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card"><div class="between row"><b>${esc(obraName(x.obraId))}</b><b class="greenText">${brl(x.valor)}</b></div><div class="muted">${fmtDate(x.data)}</div><button type="button" class="btn light full" style="margin-top:10px" onclick="gerarRecibo('${x.id}')">🧾 Gerar recibo semanal</button></div>`).join('')||'<div class="empty">Nenhum recebimento.</div>'
+ receberList.innerHTML=db.recebimentos.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card">
+   <div class="between row"><b>${esc(obraName(x.obraId))}</b><b class="greenText">${brl(x.valor)}</b></div>
+   <div class="muted">${fmtDate(x.data)}</div>
+   <div class="row" style="margin-top:10px">
+     <button type="button" class="btn light" style="flex:1" onclick="editRecebimento('${x.id}')">✏️ Editar</button>
+     <button type="button" class="btn red" style="flex:1" onclick="deleteRecebimento('${x.id}')">🗑️ Excluir</button>
+   </div>
+   <button type="button" class="btn light full" style="margin-top:8px" onclick="gerarRecibo('${x.id}')">🧾 Gerar recibo semanal</button>
+ </div>`).join('')||'<div class="empty">Nenhum recebimento.</div>'
+}
+
+function editRecebimento(id){
+  const r=db.recebimentos.find(x=>x.id===id); if(!r)return;
+  openModal('Editar recebimento',
+    '<label>Obra</label><select id="mrObra">'+db.obras.map(o=>`<option value="${o.id}" ${o.id===r.obraId?'selected':''}>${esc(o.nome)}</option>`).join('')+'</select>'+
+    '<label>Valor recebido</label><input id="mrValor" type="number" step="0.01" inputmode="decimal" value="'+r.valor+'">'+
+    '<label>Data</label><input id="mrData" type="date" value="'+r.data+'">',
+    'Salvar',function(){
+      const obra=document.getElementById('mrObra').value;
+      const valor=Number(document.getElementById('mrValor').value);
+      const data=document.getElementById('mrData').value||today();
+      if(!obra||!valor||valor<0)return toast('Preencha obra e valor corretamente');
+      r.obraId=obra; r.valor=valor; r.data=data;
+      save(); closeModal(); renderAll(); toast('Recebimento atualizado');
+    });
+}
+
+function deleteRecebimento(id){
+  const r=db.recebimentos.find(x=>x.id===id); if(!r)return;
+  openModal('Excluir recebimento',
+    '<p>Deseja excluir este recebimento de <b>'+brl(r.valor)+'</b> da obra <b>'+esc(obraName(r.obraId))+'</b>?</p>'+
+    '<p class="muted">O valor será retirado automaticamente do total recebido e do saldo da obra.</p>',
+    'Excluir',function(){
+      db.recebimentos=db.recebimentos.filter(x=>x.id!==id);
+      save(); closeModal(); renderAll(); toast('Recebimento excluído');
+    });
 }
 
 
