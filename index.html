@@ -633,18 +633,8 @@ function gerarRecibo(id){
   const texto='Recebemos de <b>'+esc(o.cliente||'cliente')+'</b> a importância de <b>'+brl(r.valor)+'</b>, referente ao pagamento semanal da obra <b>'+esc(o.nome)+'</b>.';
   const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Recibo - '+esc(o.nome)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+
     'body{margin:0;background:#f4f6f8;padding:24px;font-family:Arial,sans-serif;color:#172033}.receiptBox{max-width:760px;margin:0 auto;background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:28px;box-shadow:0 8px 30px rgba(15,23,42,.08)}.receiptHeader{display:flex;align-items:center;gap:16px;border-bottom:3px solid #f1c40f;padding-bottom:18px;margin-bottom:24px}.receiptLogo{width:78px;height:78px;border-radius:12px;background:#102a43;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;text-align:center;overflow:hidden;flex:none}.receiptLogo img{width:100%;height:100%;object-fit:contain;background:#fff}.receiptCompany{font-size:22px;font-weight:800;color:#102a43}.receiptTitle{font-size:18px;font-weight:800;margin-top:4px}.receiptLine{display:flex;justify-content:space-between;gap:15px;padding:12px 0;border-bottom:1px solid #e5e7eb}.receiptAmount{font-size:30px;font-weight:900;color:#102a43;text-align:center;background:#fff8d8;border:1px solid #f1c40f;border-radius:12px;padding:20px;margin:24px 0}.receiptText{font-size:15px;line-height:1.6;margin:20px 0}.receiptSign{margin-top:55px;text-align:center}.receiptSignLine{width:280px;border-top:1px solid #172033;margin:0 auto 8px}.actions{text-align:center;margin:18px auto;max-width:760px}.actions button{padding:12px 18px;border:0;border-radius:8px;background:#102a43;color:white;font-weight:700;margin:4px;cursor:pointer}@media print{body{background:#fff;padding:0}.actions{display:none}.receiptBox{box-shadow:none;border:0}}'+
-    '</style></head><body>
-<div id="authScreen" style="position:fixed;inset:0;background:#f3f4f6;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px">
-  <div style="width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 40px #0002">
-    <div style="text-align:center;margin-bottom:18px"><div style="font-size:28px;font-weight:900;color:#0b1f3a">CONTROLE DE OBRAS</div><div style="color:#64748b;font-size:13px;margin-top:5px">Acesso compartilhado entre seus aparelhos</div></div>
-    <div id="authMsg" class="muted" style="min-height:18px;margin-bottom:8px"></div>
-    <label>E-mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="Seu e-mail">
-    <label>Senha</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo de 6 caracteres">
-    <button type="button" class="btn full" onclick="entrar()">Entrar</button>
-    <button type="button" class="btn light full" onclick="criarConta()">Criar acesso</button>
-  </div>
-</div>
-<div class="actions"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button onclick="window.close()">Fechar</button></div><div class="receiptBox"><div class="receiptHeader"><div class="receiptLogo">'+logo+'</div><div><div class="receiptCompany">'+esc(empresa)+'</div><div class="receiptTitle">RECIBO DE PAGAMENTO SEMANAL</div></div></div>'+
+    '</style></head><body>'+
+    '<div class="actions"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button onclick="window.close()">Fechar</button></div><div class="receiptBox"><div class="receiptHeader"><div class="receiptLogo">'+logo+'</div><div><div class="receiptCompany">'+esc(empresa)+'</div><div class="receiptTitle">RECIBO DE PAGAMENTO SEMANAL</div></div></div>'+
     '<div class="receiptLine"><span>Cliente</span><b>'+esc(o.cliente||'Não informado')+'</b></div>'+
     '<div class="receiptLine"><span>Obra</span><b>'+esc(o.nome)+'</b></div>'+
     '<div class="receiptLine"><span>Período da semana</span><b>'+fmtDate(monday(inicio))+' a '+fmtDate(fim)+'</b></div>'+
