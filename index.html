@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Controle de Obras</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#0b1f3a;--muted:#64748b;--line:#e2e8f0;--primary:#0b1f3a;--accent:#f5c400;--danger:#d4a900;--warn:#f5c400}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text)}
+.app{max-width:480px;margin:auto;min-height:100vh;padding-bottom:82px}
+header{background:var(--primary);color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5}
+.head{display:flex;align-items:center;gap:12px}.logo{width:54px;height:54px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#0b1f3a;font-size:9px;text-align:center;font-weight:700}
+.logo img{width:100%;height:100%;object-fit:contain}.brand{font-size:19px;font-weight:800}.sub{font-size:12px;opacity:.75;margin-top:3px}
+main{padding:14px}.screen{display:none}.screen.active{display:block}
+h2{font-size:20px;margin:4px 0 14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px #00000008}
+.kpi .label{font-size:11px;color:var(--muted);text-transform:uppercase}.kpi .value{font-size:19px;font-weight:800;margin-top:6px}
+.btn{border:0;border-radius:11px;padding:12px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;font-size:14px}
+.btn.green{background:var(--accent)}.btn.red{background:var(--danger)}.btn.light{background:#eef2f7;color:var(--text)}
+.btn.full{width:100%;margin-top:8px}.row{display:flex;gap:8px;align-items:center}.between{justify-content:space-between}
+input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:15px;outline:none}
+label{font-size:12px;font-weight:700;display:block;margin:10px 0 5px}.muted{color:var(--muted);font-size:12px}
+.money{font-weight:800}.greenText{color:#b08b00}.redText{color:var(--danger)}
+.progress{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:10px 0}.progress>div{height:100%;background:var(--accent)}
+.obra-title{font-size:17px;font-weight:800}.small{font-size:13px}.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{background:#f1f5f9;border-radius:99px;padding:5px 8px;font-size:11px}
+.detail-head{display:flex;gap:8px;align-items:flex-start}.back{font-size:22px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line)}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);height:70px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:10}
+nav button{border:0;background:white;color:#6b7280;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:0}.navico{display:inline;font-size:19px;margin:0}nav button.active{color:#0b1f3a}
+.weekday{display:grid;grid-template-columns:80px 1fr;gap:7px;align-items:center;margin:7px 0}.weekday b{font-size:12px}
+.employee{border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:10px;background:#fff}
+.totalline{display:flex;justify-content:space-between;font-weight:800;padding-top:8px;border-top:1px solid var(--line);margin-top:8px}
+.empty{padding:25px 10px;text-align:center;color:var(--muted)}
+.file{display:none}
+.toast{position:fixed;left:50%;bottom:82px;transform:translateX(-50%);background:#0b1f3a;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;display:none;z-index:30}
+</style>
+
+<style>
+html,body{min-height:100%;background:#f3f4f6}
+body{overflow-x:hidden}
+.app{max-width:none;margin:0;min-height:100vh;padding-bottom:20px}
+.topbar{height:84px;background:#0b1f3a;color:#fff;padding:14px 22px;position:sticky;top:0;z-index:20}
+.topbar .head{max-width:1180px;margin:auto}
+.layout{display:flex;min-height:calc(100vh - 84px)}
+#sidebar{width:280px;flex:0 0 280px;background:#0b1f3a;color:#fff;padding:20px 12px;position:sticky;top:84px;height:calc(100vh - 84px);overflow-y:auto}
+.sideLogo{text-align:center;padding:2px 5px 20px;border-bottom:1px solid #303030;margin-bottom:12px}
+.sideLogoBox{width:62px;height:62px;border-radius:12px;background:#fff;color:#111;margin:auto;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;overflow:hidden}
+.sideLogoBox img{width:100%;height:100%;object-fit:contain}
+.sideBrand{font-size:15px;font-weight:900;margin-top:10px;letter-spacing:.5px}
+.menuTitle{font-size:10px;color:#8b8b8b;font-weight:800;letter-spacing:1px;padding:8px 12px}
+.menuTitle.lower{margin-top:10px}
+.sideBtn{width:100%;border:0;background:transparent;color:#f5f5f5;text-align:left;border-radius:10px;padding:13px 14px;margin:2px 0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.sideBtn span{flex:1}
+.sideBtn:hover{background:#242424}
+.sideBtn.active{background:#f5c400;color:#0b1f3a}
+.layout>main{flex:1;max-width:1100px;margin:0 auto;padding:25px;width:100%}
+.mobileMenu{display:none}
+#overlay{display:none}
+@media(max-width:700px){
+  .topbar{height:70px;padding:10px 14px;position:sticky;top:0}
+  .topbar .head{gap:9px}
+  .topbar .logo{width:44px;height:44px}
+  .topbar .brand{font-size:15px}
+  .topbar .sub{font-size:10px}
+  .topbar .btn{display:none}
+  .mobileMenu{display:block;position:absolute;right:14px;top:15px;background:#f5c400;color:#0b1f3a;border:0;border-radius:9px;padding:9px 11px;font-size:18px;z-index:22}
+  .layout{min-height:calc(100vh - 70px)}
+  #sidebar{position:fixed;left:0;top:70px;width:270px;height:calc(100vh - 70px);z-index:25;transform:translateX(-105%);transition:transform .2s ease;box-shadow:5px 0 20px #0005}
+  #sidebar.open{transform:translateX(0)}
+  #overlay.show{display:block;position:fixed;inset:70px 0 0;z-index:24;background:#0007}
+  .layout>main{padding:15px}
+  h2{font-size:20px}
+  .grid{grid-template-columns:1fr 1fr}
+}
+</style>
+
+<style>
+.appModal{display:none;position:fixed;inset:0;background:#0008;z-index:100;align-items:flex-end;justify-content:center;padding:12px}
+.appModal.show{display:flex}
+.modalBox{width:min(480px,100%);background:#fff;border-radius:18px;padding:18px;box-shadow:0 15px 45px #0005}
+.modalTitle{font-size:19px;font-weight:800;color:#0b1f3a;margin-bottom:10px}
+.modalBox input{font-size:16px}
+</style>
+
+<style>
+.compactEmployee{padding:11px;margin-bottom:8px}
+.employeeTotal{font-size:17px;color:#0b1f3a}
+.employeeResumo{margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.employeeActions{margin-top:9px}
+.employeeActions .btn{padding:9px 8px;font-size:12px}
+@media(max-width:480px){
+  .compactEmployee{border-radius:12px}
+  .employeeActions .btn{font-size:11px}
+}
+</style>
+
+<style>
+.employeeEditBtn,.employeeDeleteBtn{flex:0 0 38px!important;padding:9px 5px!important}
+.employeeDeleteBtn{color:#b08b00}
+</style>
+
+<style>
+.weekPayrollSummary{border:2px solid #f5c400;background:#fffdf2}
+.weekObraRow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e5e7eb;font-size:13px}
+.weekObraRow:last-of-type{border-bottom:0}
+</style>
+
+<style>
+.weekHistory{margin-top:10px}
+.historyWeek{padding:9px 0;border-top:1px solid #e5e7eb}
+.historyWeek .muted{margin-top:4px;line-height:1.35}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <button type="button" class="mobileMenu" onclick="toggleSidebar()">☰</button>
+  <div class="head">
+    <div class="logo" id="logoBox">LOGO<br>EMPRESA</div>
+    <div style="flex:1"><div class="brand" id="brandName">Controle de Obras</div><div class="sub">Financeiro simples • por obra</div></div>
+    <label for="logoInput" class="btn light" style="padding:9px 10px;font-size:11px;margin:0">Logo</label>
+    <input class="file" id="logoInput" type="file" accept="image/*">
+  </div>
+</header>
+<div class="layout">
+<aside id="sidebar">
+  <div class="sideLogo"><div class="sideLogoBox" id="sideLogoBox">LOGO</div><div class="sideBrand" id="sideBrand">CONTROLE DE OBRAS</div></div>
+  <div class="menuTitle">MENU</div>
+  <button type="button" class="sideBtn active" data-tab="resumo" onclick="go('resumo');closeSidebar()">📊 <span>Dashboard</span></button>
+  <button type="button" class="sideBtn" data-tab="obras" onclick="go('obras');closeSidebar()">🏗️ <span>Obras</span></button>
+  <button type="button" class="sideBtn" data-tab="receber" onclick="go('receber');closeSidebar()">💰 <span>Receber</span></button>
+  <button type="button" class="sideBtn" data-tab="funcionarios" onclick="go('funcionarios');closeSidebar()">👷 <span>Funcionários</span></button>
+  <button type="button" class="sideBtn" data-tab="caixa" onclick="go('caixa');closeSidebar()">💵 <span>Caixa</span></button>
+  <div class="menuTitle lower">GERAL</div>
+  <button type="button" class="sideBtn" onclick="document.getElementById('logoInput').click();closeSidebar()">🖼️ <span>Logomarca</span></button>
+  <button type="button" class="sideBtn" onclick="exportData();closeSidebar()">💾 <span>Backup</span></button>
+</aside>
+<div id="overlay" onclick="closeSidebar()"></div>
+<main>
+<section id="resumo" class="screen active">
+<h2>Resumo</h2>
+<div class="grid">
+ <div class="card kpi"><div class="label">Obras</div><div class="value" id="kObras">0</div></div>
+ <div class="card kpi"><div class="label">Total das obras</div><div class="value" id="kTotal">R$ 0,00</div></div>
+ <div class="card kpi"><div class="label">Recebido</div><div class="value greenText" id="kRecebido">R$ 0,00</div></div>
+ <div class="card kpi"><div class="label">A receber</div><div class="value" id="kAReceber">R$ 0,00</div></div>
+ <div class="card kpi"><div class="label">Mão de obra paga</div><div class="value" id="kMao">R$ 0,00</div></div>
+ <div class="card kpi"><div class="label">Outras despesas</div><div class="value" id="kDesp">R$ 0,00</div></div>
+</div>
+<div class="card"><div class="between row"><b>Caixa geral</b><span class="money" id="kCaixa">R$ 0,00</span></div><div class="muted" style="margin-top:5px">Recebimentos − pagamentos de funcionários − despesas.</div></div>
+<div class="card"><b>Recebimentos desta semana</b><div id="weekSummary" style="margin-top:8px"></div></div>
+<div class="card"><b>🔔 Atenção</b><div id="alerts" style="margin-top:8px"></div></div>
+</section>
+
+<section id="obras" class="screen">
+<h2>Obras</h2>
+<button class="btn green full" onclick="showForm('obraForm')">+ Nova obra</button>
+<div id="obraForm" class="card" style="display:none">
+<label>Nome da obra</label><input id="oNome" placeholder="Ex.: Casa João">
+<label>Cliente</label><input id="oCliente" placeholder="Nome do cliente">
+<label>Valor inicial da obra</label><input id="oValor" type="number" step="0.01" placeholder="10000">
+<label>Valor previsto por semana</label><input id="oSemanal" type="number" step="0.01" placeholder="1000">
+<div class="muted" style="margin-top:6px">Depois você poderá ajustar o orçamento quando houver expansão ou serviço extra.</div>
+<div class="row" style="margin-top:10px"><button class="btn green" style="flex:1" onclick="addObra()">Salvar obra</button><button class="btn light" onclick="hideForm('obraForm')">Cancelar</button></div>
+</div>
+<div id="obrasList"></div>
+</section>
+
+<section id="receber" class="screen">
+<h2>Receber</h2>
+<div class="card">
+<label>Obra</label><select id="rObra"></select>
+<label>Valor recebido</label><input id="rValor" type="number" step="0.01" placeholder="1000">
+<label>Data</label><input id="rData" type="date">
+<button class="btn green full" onclick="addRecebimento()">Registrar recebimento</button>
+</div>
+<div id="receberList"></div>
+</section>
+
+<section id="funcionarios" class="screen">
+<h2>Funcionários</h2>
+<button class="btn green full" onclick="showForm('funcForm')">+ Novo funcionário</button>
+<div id="funcForm" class="card" style="display:none">
+<label>Nome</label><input id="fNome" placeholder="Ex.: João">
+<label>Valor da diária</label><input id="fDiaria" type="number" step="0.01" placeholder="100">
+<div class="row" style="margin-top:10px"><button class="btn green" style="flex:1" onclick="addFuncionario()">Salvar</button><button class="btn light" onclick="hideForm('funcForm')">Cancelar</button></div>
+</div>
+<div class="card">
+<label>Semana</label><input id="weekStart" type="date" onchange="renderFuncionarios()">
+<button type="button" class="btn light full" onclick="goCurrentWeek()">↻ Ir para semana atual</button>
+<div class="muted" style="margin-top:7px">A semana atual começa limpa. As semanas anteriores ficam guardadas no histórico e não precisam ser apagadas.</div>
+</div>
+<div id="weekPayrollSummary" class="card weekPayrollSummary"></div>
+<button type="button" class="btn green full" onclick="closeCurrentWeek()">✓ Conferir e fechar semana</button>
+<div id="funcList"></div>
+<div id="weekHistory" class="card weekHistory"></div>
+</section>
+
+<section id="caixa" class="screen">
+<h2>Caixa</h2>
+<div class="grid">
+ <div class="card kpi"><div class="label">Entradas</div><div class="value greenText" id="cEntradas">R$ 0,00</div></div>
+ <div class="card kpi"><div class="label">Saídas</div><div class="value redText" id="cSaidas">R$ 0,00</div></div>
+</div>
+<div class="card">
+<label>Obra</label><select id="dObra"></select>
+<label>Tipo de despesa</label><select id="dTipo"><option value="material">🧱 Material</option><option value="combustivel">🚗 Combustível</option><option value="outros">📦 Outros</option></select>
+<label>Descrição</label><input id="dDesc" placeholder="Ex.: cimento, areia, combustível...">
+<label>Valor</label><input id="dValor" type="number" step="0.01">
+<label>Data</label><input id="dData" type="date">
+<button class="btn red full" onclick="addDespesa()">Registrar despesa da obra</button>
+</div>
+<div id="despList"></div>
+<div class="card">
+<b>Backup</b><div class="muted" style="margin:5px 0 9px">Exporte seus dados para guardar uma cópia ou trocar de aparelho.</div>
+<div class="row"><button class="btn light" style="flex:1" onclick="exportData()">Exportar</button><label for="importInput" class="btn light" style="margin:0;flex:1;text-align:center">Importar</label><input id="importInput" class="file" type="file" accept=".json"></div>
+</div>
+</section>
+
+<section id="detalhe" class="screen">
+<div id="detailContent"></div>
+</section>
+</main>
+
+
+<div id="toast" class="toast"></div>
+</div>
+
+<script>
+const KEY='controle_obras_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{empresa:'Controle de Obras',logo:'',obras:[],recebimentos:[],funcionarios:[],jornadas:{},pagamentos:[],despesas:[],acrescimos:[]};
+const brl=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function save(){localStorage.setItem(KEY,JSON.stringify(db));}
+function toast(t){let x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
+function today(){return new Date().toISOString().slice(0,10)}
+function monday(d=new Date()){d=new Date(d);d.setHours(0,0,0,0);let day=d.getDay();let diff=day===0?-6:1-day;d.setDate(d.getDate()+diff);return d.toISOString().slice(0,10)}
+function addDays(s,n){let d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function fmtDate(s){if(!s)return '-';let [y,m,d]=s.split('-');return `${d}/${m}/${y}`}
+function go(id){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  const target=document.getElementById(id);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.sideBtn').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  window.scrollTo({top:0,behavior:'instant'});
+  renderAll();
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show')}
+function showForm(id){document.getElementById(id).style.display='block'}
+function hideForm(id){document.getElementById(id).style.display='none'}
+function totalObra(o){return o.valorInicial+db.acrescimos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
+function received(o){return db.recebimentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
+function labor(o){return db.pagamentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
+function expenses(o){return db.despesas.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
+function obraName(id){return db.obras.find(x=>x.id===id)?.nome||'Obra removida'}
+function fillSelect(id,blank='Selecione a obra'){let s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">'+blank+'</option>'+db.obras.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
+function addObra(){
+ let nome=oNome.value.trim(),cliente=oCliente.value.trim(),valor=Number(oValor.value),sem=Number(oSemanal.value)||0;
+ if(!nome||!valor)return toast('Preencha nome e valor da obra');
+ db.obras.push({id:uid(),nome,cliente,valorInicial:valor,valorSemanal:sem,criadoEm:today()});save();
+ oNome.value=oCliente.value=oValor.value=oSemanal.value='';hideForm('obraForm');toast('Obra cadastrada');renderAll()
+}
+
+function adjustBudget(id){
+ let o=db.obras.find(x=>x.id===id); if(!o) return;
+ let atual=totalObra(o);
+ let v=prompt('Novo valor TOTAL da obra (R$):', atual.toFixed(2).replace('.',','));
+ if(v===null)return;
+ v=Number(String(v).replace(/\./g,'').replace(',','.'));
+ if(!isFinite(v)||v<0)return toast('Valor inválido');
+ let diferenca=v-atual;
+ if(diferenca===0)return toast('Nenhuma alteração');
+ db.acrescimos.push({
+   id:uid(), obraId:id,
+   descricao:diferenca>0?'Ajuste de orçamento / expansão':'Ajuste de orçamento',
+   valor:diferenca,
+   data:today()
+ });
+ save(); toast('Orçamento atualizado'); openObra(id);
+}
+function deleteObra(id){
+ let o=db.obras.find(x=>x.id===id); if(!o)return;
+ if(!confirm('Excluir a obra "'+o.nome+'"?\\n\\nOs recebimentos, despesas, acréscimos e custos ligados a ela também serão removidos.'))return;
+ db.obras=db.obras.filter(x=>x.id!==id);
+ db.recebimentos=db.recebimentos.filter(x=>x.obraId!==id);
+ db.acrescimos=db.acrescimos.filter(x=>x.obraId!==id);
+ db.pagamentos=db.pagamentos.filter(x=>x.obraId!==id);
+ db.despesas=db.despesas.filter(x=>x.obraId!==id);
+ Object.keys(db.jornadas).forEach(k=>{
+   Object.keys(db.jornadas[k]||{}).forEach(day=>{if(db.jornadas[k][day]===id) delete db.jornadas[k][day]});
+ });
+ save(); toast('Obra excluída'); go('obras');
+}
+function addAcrescimo(id){
+ let d=prompt('Descrição do acréscimo:');if(!d)return;let v=Number(prompt('Valor do acréscimo (R$):'));if(!v)return;
+ db.acrescimos.push({id:uid(),obraId:id,descricao:d,valor:v,data:today()});save();toast('Acréscimo adicionado');renderAll()
+}
+function addRecebimento(){
+ let obra=rObra.value,v=Number(rValor.value),data=rData.value||today();if(!obra||!v)return toast('Preencha obra e valor');
+ db.recebimentos.push({id:uid(),obraId:obra,valor:v,data});save();rValor.value='';toast('Recebimento registrado');renderAll()
+}
+
+function editFuncionario(id){
+  const f=db.funcionarios.find(x=>x.id===id); if(!f)return;
+  openModal('Editar funcionário',
+    '<label>Nome</label><input id="mfNome" value="'+esc(f.nome)+'">'+
+    '<label>Valor da diária</label><input id="mfDiaria" type="number" step="0.01" inputmode="decimal" value="'+f.diaria+'">',
+    'Salvar',function(){
+      const nome=document.getElementById('mfNome').value.trim();
+      const diaria=Number(document.getElementById('mfDiaria').value);
+      if(!nome||!diaria)return toast('Preencha nome e diária');
+      f.nome=nome; f.diaria=diaria; save(); closeModal(); renderFuncionarios(); toast('Funcionário atualizado');
+    });
+}
+function deleteFuncionario(id){
+  const f=db.funcionarios.find(x=>x.id===id); if(!f)return;
+  openModal('Excluir funcionário',
+    '<p>Deseja excluir <b>'+esc(f.nome)+'</b>?</p><p class="muted">Os pagamentos já registrados não serão apagados. Os lançamentos de dias desse funcionário serão removidos.</p>',
+    'Excluir',function(){
+      db.funcionarios=db.funcionarios.filter(x=>x.id!==id);
+      Object.keys(db.jornadas).forEach(k=>{if(k.endsWith('_'+id))delete db.jornadas[k]});
+      save(); closeModal(); renderAll(); toast('Funcionário excluído');
+    });
+}
+function addFuncionario(){
+ let nome=fNome.value.trim(),diaria=Number(fDiaria.value);if(!nome||!diaria)return toast('Preencha nome e diária');
+ db.funcionarios.push({id:uid(),nome,diaria});save();fNome.value=fDiaria.value='';hideForm('funcForm');toast('Funcionário cadastrado');renderAll()
+}
+const days=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
+function setJornada(fid,week,day,obraId){let k=week+'_'+fid;db.jornadas[k]=db.jornadas[k]||{};db.jornadas[k][day]=obraId;save();renderFuncionarios()}
+function jornada(fid,week){return db.jornadas[week+'_'+fid]||{}}
+function calcEmployee(fid,week){
+ let f=db.funcionarios.find(x=>x.id===fid),j=jornada(fid,week),by={};let daysWorked=0;
+ Object.values(j).forEach(oid=>{if(oid){daysWorked++;by[oid]=(by[oid]||0)+f.diaria}});
+ return {f,by,days:daysWorked,total:daysWorked*f.diaria}
+}
+function weekPaid(fid,week){return db.pagamentos.some(x=>x.tipo==='fechamento'&&x.funcionarioId===fid&&x.week===week)}
+function payWeek(fid,week){
+ if(weekPaid(fid,week))return toast('Esta semana já foi paga');
+ let c=calcEmployee(fid,week);if(!c.days)return toast('Nenhum dia lançado');
+ Object.entries(c.by).forEach(([obraId,v])=>db.pagamentos.push({id:uid(),tipo:'fechamento',funcionarioId:fid,obraId,valor:v,week,data:today()}));
+ save();toast('Semana paga e custos separados por obra');renderFuncionarios();renderResumo()
+}
+function addDespesa(){let obra=dObra.value,desc=dDesc.value.trim(),v=Number(dValor.value),data=dData.value||today();if(!obra||!desc||!v)return toast('Preencha obra, descrição e valor');db.despesas.push({id:uid(),obraId:obra,tipo:dTipo.value||'outros',descricao:desc,valor:v,data});save();dDesc.value=dValor.value='';toast('Despesa registrada');renderAll()}
+
+function renderResumo(){
+ let total=db.obras.reduce((a,o)=>a+totalObra(o),0),rec=db.recebimentos.reduce((a,x)=>a+x.valor,0),mao=db.pagamentos.reduce((a,x)=>a+x.valor,0),desp=db.despesas.reduce((a,x)=>a+x.valor,0);
+ kObras.textContent=db.obras.length;kTotal.textContent=brl(total);kRecebido.textContent=brl(rec);kAReceber.textContent=brl(Math.max(0,total-rec));kMao.textContent=brl(mao);kDesp.textContent=brl(desp);kCaixa.textContent=brl(rec-mao-desp);
+ let w=monday(),actual=db.recebimentos.filter(x=>x.data>=w&&x.data<=addDays(w,6)).reduce((a,x)=>a+x.valor,0),prev=db.obras.reduce((a,o)=>a+o.valorSemanal,0);
+ weekSummary.innerHTML=`<div class="between row"><span>Previsto</span><b>${brl(prev)}</b></div><div class="between row"><span>Recebido</span><b class="greenText">${brl(actual)}</b></div><div class="progress"><div style="width:${prev?Math.min(100,actual/prev*100):0}%"></div></div><div class="muted">Semana de ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</div>`
+let alertRows=[];
+db.obras.forEach(o=>{
+  const falta=Math.max(0,totalObra(o)-received(o));
+  if(falta>0) alertRows.push(`📥 <b>${esc(o.nome)}</b>: ${brl(falta)} a receber`);
+});
+const cw=weekStart?.value||monday();
+const temDias=db.funcionarios.some(f=>calcEmployee(f.id,cw).days);
+const pend=db.funcionarios.filter(f=>calcEmployee(f.id,cw).days&&!weekPaid(f.id,cw)).length;
+if(pend) alertRows.push(`👷 ${pend} funcionário(s) com semana ainda não fechada`);
+alerts.innerHTML=alertRows.length?alertRows.map(x=>`<div style="padding:7px 0;border-bottom:1px solid #eee">${x}</div>`).join(''):'<div class="muted">Tudo em ordem por enquanto.</div>';
+}
+function renderObras(){
+ let el=obrasList;if(!db.obras.length){el.innerHTML='<div class="empty">Nenhuma obra cadastrada.</div>';return}
+ el.innerHTML=db.obras.map(o=>{let tot=totalObra(o),rec=received(o),rest=Math.max(0,tot-rec),pct=tot?Math.min(100,rec/tot*100):0;
+ return `<div class="card" onclick="openObra('${o.id}')"><div class="between row"><div><div class="obra-title">${esc(o.nome)}</div><div class="muted">${esc(o.cliente||'Sem cliente')}</div></div><span>›</span></div><div class="progress"><div style="width:${pct}%"></div></div><div class="grid"><div><div class="muted">Total</div><b>${brl(tot)}</b></div><div><div class="muted">A receber</div><b>${brl(rest)}</b></div></div></div>`}).join('')
+}
+function openObra(id){
+ document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById('detalhe').classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+ let o=db.obras.find(x=>x.id===id),tot=totalObra(o),rec=received(o),ac=db.acrescimos.filter(x=>x.obraId===id),rr=db.recebimentos.filter(x=>x.obraId===id).sort((a,b)=>b.data.localeCompare(a.data)),pp=db.pagamentos.filter(x=>x.obraId===id),dd=db.despesas.filter(x=>x.obraId===id),cust=labor(o)+expenses(o);
+ detailContent.innerHTML=`<div class="detail-head"><div class="back" onclick="go('obras')">‹</div><div><h2 style="margin:0">${esc(o.nome)}</h2><div class="muted">${esc(o.cliente||'')}</div></div></div>
+ <div class="grid">
+ <div class="card kpi"><div class="label">Valor inicial</div><div class="value">${brl(o.valorInicial)}</div></div>
+ <div class="card kpi"><div class="label">Acréscimos</div><div class="value">${brl(tot-o.valorInicial)}</div></div>
+ <div class="card kpi"><div class="label">Recebido</div><div class="value greenText">${brl(rec)}</div></div>
+ <div class="card kpi"><div class="label">A receber</div><div class="value">${brl(Math.max(0,tot-rec))}</div></div>
+ </div>
+ <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Caixa desta obra</span><b class="greenText">${brl(rec-cust)}</b></div></div>
+ <div class="row" style="margin-top:8px">
+   <button type="button" class="btn green obraAction" style="flex:1" data-action="acrescimo" data-obra="${id}">+ Acréscimo</button>
+   <button type="button" class="btn light obraAction" style="flex:1" data-action="orcamento" data-obra="${id}">✏️ Ajustar orçamento</button>
+ </div>
+ <button type="button" class="btn red full obraAction" data-action="excluir" data-obra="${id}">🗑️ Excluir obra</button>
+ <div class="card"><b>Acréscimos / ajustes do orçamento</b>${ac.length?'<table><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr>'+ac.map(x=>`<tr><td>${fmtDate(x.data)}</td><td>${esc(x.descricao)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum acréscimo.</div>'}</div>
+ <div class="card"><b>Recebimentos</b>${rr.length?'<table><tr><th>Data</th><th>Valor</th></tr>'+rr.map(x=>`<tr><td>${fmtDate(x.data)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum recebimento.</div>'}</div>
+ <div class="card"><b>Mão de obra</b>${pp.length?'<table><tr><th>Semana</th><th>Funcionário</th><th>Valor</th></tr>'+pp.map(x=>`<tr><td>${fmtDate(x.week)}</td><td>${esc(db.funcionarios.find(f=>f.id===x.funcionarioId)?.nome||'')}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum pagamento.</div>'}</div>
+ <div class="card"><b>Despesas</b>
+ <div class="chips" style="margin-top:8px">
+ <span class="chip">🧱 Material: ${brl(dd.filter(x=>x.tipo==='material').reduce((a,x)=>a+x.valor,0))}</span>
+ <span class="chip">🚗 Combustível: ${brl(dd.filter(x=>x.tipo==='combustivel').reduce((a,x)=>a+x.valor,0))}</span>
+ <span class="chip">📦 Outros: ${brl(dd.filter(x=>x.tipo==='outros'||!x.tipo).reduce((a,x)=>a+x.valor,0))}</span>
+ </div>${dd.length?'<table><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr>'+dd.map(x=>`<tr><td>${fmtDate(x.data)}</td><td>${esc(x.descricao)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhuma despesa.</div>'}</div>`
+}
+function renderReceber(){
+ fillSelect('rObra');rData.value=rData.value||today();
+ receberList.innerHTML=db.recebimentos.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card"><div class="between row"><b>${esc(obraName(x.obraId))}</b><b class="greenText">${brl(x.valor)}</b></div><div class="muted">${fmtDate(x.data)}</div></div>`).join('')||'<div class="empty">Nenhum recebimento.</div>'
+}
+
+
+
+function closeCurrentWeek(){
+  const w=weekStart.value||monday(), by=calcWeekByObra(w);
+  const rows=Object.entries(by);
+  if(!rows.length)return toast('Nenhum dia de funcionário lançado nesta semana');
+  const total=Object.values(by).reduce((a,v)=>a+v,0);
+  openModal('Conferir fechamento da semana',
+    '<div class="muted">Semana de '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+
+    '<div style="margin-top:10px">'+rows.map(([oid,v])=>`<div class="weekObraRow"><span>🏗️ ${esc(obraName(oid))}</span><b>${brl(v)}</b></div>`).join('')+'</div>'+
+    '<div class="totalline"><span>Total da mão de obra</span><span>'+brl(total)+'</span></div>'+
+    '<div class="muted" style="margin-top:8px">Ao confirmar, cada valor será lançado na respectiva obra. Funcionários já pagos não serão duplicados.</div>',
+    'Confirmar pagamento',function(){
+      let count=0;
+      db.funcionarios.forEach(f=>{
+        if(!weekPaid(f.id,w)){
+          const c=calcEmployee(f.id,w);
+          if(c.days){
+            Object.entries(c.by).forEach(([obraId,v])=>{
+              db.pagamentos.push({id:uid(),tipo:'fechamento',funcionarioId:f.id,obraId,valor:v,week:w,data:today()});
+              count++;
+            });
+          }
+        }
+      });
+      save();closeModal();renderFuncionarios();renderResumo();toast(count?'Semana fechada e lançada nas obras':'Semana já estava paga');
+    });
+}
+function renderWeekHistory(){
+  const weeks={};
+  db.pagamentos.filter(x=>x.tipo==='fechamento').forEach(x=>{
+    weeks[x.week]=weeks[x.week]||{};
+    weeks[x.week][x.obraId]=(weeks[x.week][x.obraId]||0)+x.valor;
+  });
+  const keys=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+  if(!keys.length){
+    weekHistory.innerHTML='<b>Histórico de semanas</b><div class="muted" style="margin-top:6px">As semanas pagas aparecerão aqui.</div>';
+    return;
+  }
+  weekHistory.innerHTML='<div class="between row"><b>📋 Histórico de semanas</b><span class="muted">'+keys.length+' semana(s)</span></div>'+
+    keys.slice(0,8).map(w=>{
+      const total=Object.values(weeks[w]).reduce((a,v)=>a+v,0);
+      return `<div class="historyWeek"><div class="between row"><b>${fmtDate(w)}</b><b>${brl(total)}</b></div><div class="muted">${Object.entries(weeks[w]).map(([oid,v])=>esc(obraName(oid))+' '+brl(v)).join(' • ')}</div></div>`;
+    }).join('');
+}
+function goCurrentWeek(){weekStart.value=monday();renderFuncionarios();toast('Semana atual selecionada')}
+function calcWeekByObra(week){
+  const by={};
+  db.funcionarios.forEach(f=>{
+    const c=calcEmployee(f.id,week);
+    Object.entries(c.by).forEach(([obraId,v])=>{
+      by[obraId]=(by[obraId]||0)+v;
+    });
+  });
+  return by;
+}
+function renderWeekPayrollSummary(week){
+  const by=calcWeekByObra(week);
+  const total=Object.values(by).reduce((a,v)=>a+v,0);
+  const rows=Object.entries(by);
+  if(!rows.length){
+    weekPayrollSummary.innerHTML='<b>Fechamento da semana</b><div class="muted" style="margin-top:6px">Lance os dias dos funcionários para ver automaticamente quanto cada obra deve pagar.</div>';
+    return;
+  }
+  weekPayrollSummary.innerHTML=
+    '<div class="between row"><b>💰 Mão de obra da semana</b><b>'+brl(total)+'</b></div>'+
+    '<div class="muted" style="margin:5px 0 10px">Total de todos os funcionários, separado automaticamente por obra.</div>'+
+    rows.map(([oid,v])=>`<div class="weekObraRow"><span>🏗️ ${esc(obraName(oid))}</span><b>${brl(v)}</b></div>`).join('')+
+    '<div class="totalline"><span>Total geral da semana</span><span>'+brl(total)+'</span></div>';
+}
+function renderFuncionarios(){
+  weekStart.value=weekStart.value||monday();
+  let w=weekStart.value;
+  renderWeekPayrollSummary(w);
+  renderWeekHistory();
+  funcList.innerHTML=db.funcionarios.map(f=>{
+    let c=calcEmployee(f.id,w), paid=weekPaid(f.id,w);
+    let resumo=Object.entries(c.by).map(([oid,v])=>`${esc(obraName(oid))}: ${brl(v)}`).join(' • ');
+    return `<div class="employee compactEmployee">
+      <div class="between row">
+        <div>
+          <b>${esc(f.nome)}</b>
+          <div class="muted">Diária: ${brl(f.diaria)} • ${c.days} dia(s)</div>
+        </div>
+        <b class="employeeTotal">${brl(c.total)}</b>
+      </div>
+      <div class="muted employeeResumo">${resumo||'Nenhum dia lançado nesta semana.'}</div>
+      <div class="row employeeActions">
+        <button type="button" class="btn light" style="flex:1" onclick="openEmployeeWeek('${f.id}')">📅 Dias</button>
+        <button type="button" class="btn ${paid?'light':'green'}" style="flex:1" ${paid?'disabled':''} onclick="payWeek('${f.id}','${w}')">${paid?'✓ Paga':'💵 Pagar'}</button>
+        <button type="button" class="btn light employeeEditBtn" onclick="editFuncionario('${f.id}')">✏️</button>
+        <button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('')||'<div class="empty">Cadastre os funcionários.</div>'
+}
+function openEmployeeWeek(fid){
+  let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
+  let w=weekStart.value||monday(), j=jornada(fid,w), c=calcEmployee(fid,w);
+  openModal('Semana de '+esc(f.nome),
+    '<div class="muted">Diária: '+brl(f.diaria)+' • Semana: '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+
+    days.map((d,i)=>`<div class="weekday"><b>${d}</b><select id="md_${i}"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${j[i]===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select></div>`).join('')+
+    '<div id="weekCalc" class="card" style="margin:10px 0 0;background:#f8fafc"><b>Resumo</b><div class="muted" style="margin-top:5px">Salve os dias para atualizar o total.</div></div>',
+    'Salvar dias',function(){
+      db.jornadas[w+'_'+fid]={};
+      days.forEach((d,i)=>{let v=document.getElementById('md_'+i).value;if(v)db.jornadas[w+'_'+fid][i]=v});
+      save();closeModal();renderFuncionarios();toast('Dias atualizados');
+    });
+}
+function renderCaixa(){
+ fillSelect('dObra');dData.value=dData.value||today();let entradas=db.recebimentos.reduce((a,x)=>a+x.valor,0),saidas=db.pagamentos.reduce((a,x)=>a+x.valor,0)+db.despesas.reduce((a,x)=>a+x.valor,0);
+ cEntradas.textContent=brl(entradas);cSaidas.textContent=brl(saidas);
+ despList.innerHTML=db.despesas.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card"><div class="between row"><b>${esc(obraName(x.obraId))}</b><b class="redText">${brl(x.valor)}</b></div><div class="small">${x.tipo==='material'?'🧱 Material':x.tipo==='combustivel'?'🚗 Combustível':'📦 Outros'} • ${esc(x.descricao)}</div><div class="muted">${fmtDate(x.data)}</div></div>`).join('')||'<div class="empty">Nenhuma despesa.</div>'
+}
+function renderAll(){renderResumo();renderObras();renderReceber();renderFuncionarios();renderCaixa();document.getElementById('brandName').textContent=db.empresa||'Controle de Obras';if(db.logo){
+  logoBox.innerHTML=`<img src="${db.logo}">`;
+  sideLogoBox.innerHTML=`<img src="${db.logo}">`;
+} else {
+  sideLogoBox.innerHTML='LOGO';
+}
+sideBrand.textContent=(db.empresa||'CONTROLE DE OBRAS').toUpperCase();
+}
+logoInput.addEventListener('change',e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{db.logo=r.result;save();renderAll();toast('Logo adicionada')};r.readAsDataURL(f)});
+importInput.addEventListener('change',e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();renderAll();toast('Backup importado')}catch{toast('Arquivo inválido')}};r.readAsText(f)});
+function exportData(){let a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(db));a.download='backup-controle-obras.json';a.click()}
+document.addEventListener('click',e=>{if(e.target.matches('.screen')){}});
+
+weekStart.value=monday();rData.value=today();dData.value=today();renderAll();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  // Menu lateral: click e toque, sem depender apenas do onclick inline.
+  document.querySelectorAll('.sideBtn[data-tab]').forEach(function(btn){
+    const action=function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      go(btn.dataset.tab);
+      closeSidebar();
+    };
+    btn.addEventListener('click', action);
+    btn.addEventListener('touchend', action, {passive:false});
+  });
+
+  const menu=document.querySelector('.mobileMenu');
+  if(menu){
+    const open=function(ev){ev.preventDefault();ev.stopPropagation();toggleSidebar();};
+    menu.addEventListener('click',open);
+    menu.addEventListener('touchend',open,{passive:false});
+  }
+
+  const overlay=document.getElementById('overlay');
+  if(overlay){
+    overlay.addEventListener('click',function(ev){ev.preventDefault();closeSidebar();});
+    overlay.addEventListener('touchend',function(ev){ev.preventDefault();closeSidebar();},{passive:false});
+  }
+
+  // Botões com onclick gerados dinamicamente: delegação de eventos.
+  document.addEventListener('click', function(ev){
+    const b=ev.target.closest('button');
+    if(!b || b.classList.contains('sideBtn') || b.classList.contains('mobileMenu')) return;
+    // Força foco/ativação normal em telas touch.
+    b.blur();
+  }, {passive:true});
+});
+</script>
+
+<div id="appModal" class="appModal" aria-hidden="true">
+  <div class="modalBox">
+    <div class="modalTitle" id="modalTitle"></div>
+    <div id="modalBody"></div>
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn light" style="flex:1" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn green" style="flex:1" id="modalConfirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(title, body, confirmText, callback){
+  const m=document.getElementById('appModal');
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').innerHTML=body;
+  const c=document.getElementById('modalConfirm');
+  c.textContent=confirmText||'Confirmar';
+  c.onclick=function(){callback();};
+  m.classList.add('show');m.setAttribute('aria-hidden','false');
+}
+function closeModal(){
+  const m=document.getElementById('appModal');
+  m.classList.remove('show');m.setAttribute('aria-hidden','true');
+}
+function mobileAddAcrescimo(id){
+  openModal('Adicionar acréscimo',
+    '<label>Descrição</label><input id="mDesc" placeholder="Ex.: pintura, área externa...">'+
+    '<label>Valor do acréscimo</label><input id="mValor" type="number" step="0.01" inputmode="decimal" placeholder="2000">',
+    'Adicionar',function(){
+      const d=document.getElementById('mDesc').value.trim();
+      const v=Number(document.getElementById('mValor').value);
+      if(!d||!v)return toast('Preencha descrição e valor');
+      db.acrescimos.push({id:uid(),obraId:id,descricao:d,valor:v,data:today()});
+      save();closeModal();toast('Acréscimo adicionado');openObra(id);
+    });
+}
+function mobileAdjustBudget(id){
+  const o=db.obras.find(x=>x.id===id);if(!o)return;
+  const atual=totalObra(o);
+  openModal('Ajustar orçamento',
+    '<div class="muted">Valor atual: '+brl(atual)+'</div>'+
+    '<label>Novo valor TOTAL da obra</label><input id="mNovoValor" type="number" step="0.01" inputmode="decimal" value="'+atual.toFixed(2)+'">'+
+    '<div class="muted" style="margin-top:8px">O sistema registra a diferença como ajuste, sem apagar o histórico.</div>',
+    'Salvar',function(){
+      const v=Number(document.getElementById('mNovoValor').value);
+      if(!isFinite(v)||v<0)return toast('Valor inválido');
+      const diferenca=v-atual;
+      if(diferenca===0){closeModal();return toast('Nenhuma alteração');}
+      db.acrescimos.push({id:uid(),obraId:id,descricao:diferenca>0?'Ajuste de orçamento / expansão':'Ajuste de orçamento',valor:diferenca,data:today()});
+      save();closeModal();toast('Orçamento atualizado');openObra(id);
+    });
+}
+function mobileDeleteObra(id){
+  const o=db.obras.find(x=>x.id===id);if(!o)return;
+  openModal('Excluir obra',
+    '<p>Deseja realmente excluir <b>'+esc(o.nome)+'</b>?</p><p class="muted">Os recebimentos, despesas, acréscimos e custos vinculados também serão removidos.</p>',
+    'Excluir',function(){
+      db.obras=db.obras.filter(x=>x.id!==id);
+      db.recebimentos=db.recebimentos.filter(x=>x.obraId!==id);
+      db.acrescimos=db.acrescimos.filter(x=>x.obraId!==id);
+      db.pagamentos=db.pagamentos.filter(x=>x.obraId!==id);
+      db.despesas=db.despesas.filter(x=>x.obraId!==id);
+      Object.keys(db.jornadas).forEach(k=>{
+        Object.keys(db.jornadas[k]||{}).forEach(day=>{if(db.jornadas[k][day]===id)delete db.jornadas[k][day]});
+      });
+      save();closeModal();toast('Obra excluída');go('obras');
+    });
+}
+document.addEventListener('pointerup',function(e){
+  const b=e.target.closest('.obraAction');
+  if(!b)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const id=b.dataset.obra;
+  if(b.dataset.action==='acrescimo')mobileAddAcrescimo(id);
+  if(b.dataset.action==='orcamento')mobileAdjustBudget(id);
+  if(b.dataset.action==='excluir')mobileDeleteObra(id);
+},{passive:false});
+</script>
+</body>
+</html>
