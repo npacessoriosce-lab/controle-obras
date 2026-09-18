@@ -220,7 +220,7 @@ body{overflow-x:hidden}
 <div class="card">
 <label>Semana</label><input id="weekStart" type="date" onchange="renderFuncionarios()">
 <button type="button" class="btn light full" onclick="goCurrentWeek()">↻ Ir para semana atual</button>
-<div class="muted" style="margin-top:7px">A semana atual começa limpa. As semanas anteriores ficam guardadas no histórico e não precisam ser apagadas.</div>
+<div class="muted" style="margin-top:7px">As semanas anteriores ficam guardadas no histórico. Se lançar errado, você pode corrigir os dias, reabrir ou apagar a semana e fechar novamente.</div>
 </div>
 <div id="weekPayrollSummary" class="card weekPayrollSummary"></div>
 <button type="button" class="btn green full" onclick="closeCurrentWeek()">✓ Conferir e fechar semana</button>
@@ -587,8 +587,23 @@ function renderWeekHistory(){
   weekHistory.innerHTML='<div class="between row"><b>📋 Histórico de semanas</b><span class="muted">'+keys.length+' semana(s)</span></div>'+
     keys.slice(0,8).map(w=>{
       const total=Object.values(weeks[w]).reduce((a,v)=>a+v,0);
-      return `<div class="historyWeek"><div class="between row"><b>${fmtDate(w)}</b><b>${brl(total)}</b></div><div class="muted">${Object.entries(weeks[w]).map(([oid,v])=>esc(obraName(oid))+' '+brl(v)).join(' • ')}</div></div>`;
+      return `<div class="historyWeek"><div class="between row"><div><b>Semana de ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</b><div class="muted" style="margin-top:3px">${Object.entries(weeks[w]).map(([oid,v])=>esc(obraName(oid))+' '+brl(v)).join(' • ')}</div></div><b>${brl(total)}</b></div><div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn light" style="flex:1" onclick="reabrirSemana('${w}')">✏️ Corrigir semana</button><button type="button" class="btn red" style="flex:1" onclick="excluirSemana('${w}')">🗑️ Apagar semana</button></div></div>`;
     }).join('');
+}
+function excluirSemana(w){
+  const pagos=db.pagamentos.filter(x=>x.tipo==='fechamento'&&x.week===w);
+  if(!pagos.length)return toast('Nenhum lançamento encontrado nessa semana');
+  const total=pagos.reduce((a,x)=>a+x.valor,0);
+  openModal('Apagar semana',
+    '<p>Deseja realmente apagar os lançamentos da semana de <b>'+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</b>?</p>'+    '<p>Serão removidos <b>'+pagos.length+'</b> lançamento(s), totalizando <b>'+brl(total)+'</b>.</p>'+    '<p class="muted">Os dias trabalhados continuam registrados. Depois, você poderá corrigir os dias e fechar a semana novamente.</p>',
+    'Apagar semana',function(){
+      db.pagamentos=db.pagamentos.filter(x=>!(x.tipo==='fechamento'&&x.week===w));
+      save();closeModal();weekStart.value=w;renderAll();toast('Semana apagada. Corrija os dias e feche novamente');
+    });
+}
+function reabrirSemana(w){
+  db.pagamentos=db.pagamentos.filter(x=>!(x.tipo==='fechamento'&&x.week===w));
+  save();weekStart.value=w;renderFuncionarios();toast('Semana reaberta. Corrija os dias e feche novamente');
 }
 function goCurrentWeek(){weekStart.value=monday();renderFuncionarios();toast('Semana atual selecionada')}
 function calcWeekByObra(week){
