@@ -442,12 +442,18 @@ function addFuncionario(){
  db.funcionarios.push({id:uid(),nome,diaria});save();fNome.value=fDiaria.value='';hideForm('funcForm');toast('Funcionário cadastrado');renderAll()
 }
 const days=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
-function setJornada(fid,week,day,obraId){let k=week+'_'+fid;db.jornadas[k]=db.jornadas[k]||{};db.jornadas[k][day]=obraId;save();renderFuncionarios()}
+function setJornada(fid,week,day,valor){let k=week+'_'+fid;db.jornadas[k]=db.jornadas[k]||{};db.jornadas[k][day]=valor;save();renderFuncionarios()}
 function jornada(fid,week){return db.jornadas[week+'_'+fid]||{}}
+function jornadaInfo(v){
+  if(!v)return null;
+  if(typeof v==='string')return {obraId:v,fator:1};
+  if(typeof v==='object' && v.obraId)return {obraId:v.obraId,fator:Number(v.fator)||0};
+  return null;
+}
 function calcEmployee(fid,week){
- let f=db.funcionarios.find(x=>x.id===fid),j=jornada(fid,week),by={};let daysWorked=0;
- Object.values(j).forEach(oid=>{if(oid){daysWorked++;by[oid]=(by[oid]||0)+f.diaria}});
- return {f,by,days:daysWorked,total:daysWorked*f.diaria}
+ let f=db.funcionarios.find(x=>x.id===fid),j=jornada(fid,week),by={},daysWorked=0,fullDays=0,halfDays=0;
+ Object.values(j).forEach(v=>{let info=jornadaInfo(v);if(info&&info.obraId&&info.fator>0){daysWorked+=info.fator;if(info.fator===1)fullDays++;if(info.fator===0.5)halfDays++;by[info.obraId]=(by[info.obraId]||0)+f.diaria*info.fator}});
+ return {f,by,days:daysWorked,fullDays,halfDays,total:daysWorked*f.diaria}
 }
 function weekPaid(fid,week){return db.pagamentos.some(x=>x.tipo==='fechamento'&&x.funcionarioId===fid&&x.week===week)}
 function payWeek(fid,week){
@@ -642,7 +648,7 @@ function renderFuncionarios(){
       <div class="between row">
         <div>
           <b>${esc(f.nome)}</b>
-          <div class="muted">Diária: ${brl(f.diaria)} • ${c.days} dia(s)</div>
+          <div class="muted">Diária: ${brl(f.diaria)} • ${c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})} diária(s) equivalente(s)${c.fullDays?' • '+c.fullDays+' inteiro(s)':''}${c.halfDays?' • '+c.halfDays+' meio(s)':''}</div>
         </div>
         <b class="employeeTotal">${brl(c.total)}</b>
       </div>
@@ -658,16 +664,15 @@ function renderFuncionarios(){
 }
 function openEmployeeWeek(fid){
   let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
-  let w=weekStart.value||monday(), j=jornada(fid,w), c=calcEmployee(fid,w);
+  let w=weekStart.value||monday(), j=jornada(fid,w);
   openModal('Semana de '+esc(f.nome),
-    '<div class="muted">Diária: '+brl(f.diaria)+' • Semana: '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+
-    days.map((d,i)=>`<div class="weekday"><b>${d}</b><select id="md_${i}"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${j[i]===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select></div>`).join('')+
-    '<div id="weekCalc" class="card" style="margin:10px 0 0;background:#f8fafc"><b>Resumo</b><div class="muted" style="margin-top:5px">Salve os dias para atualizar o total.</div></div>',
+    '<div class="muted">Diária: '+brl(f.diaria)+' • Semana: '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+    '<div class="muted" style="margin:8px 0">Escolha a obra e quanto trabalhou em cada dia. Meio período vale 0,5 diária.</div>'+    days.map((d,i)=>{let info=jornadaInfo(j[i]);let fator=info?info.fator:0;let tipo=fator===1?'1':fator===0.5?'0.5':fator>0?'custom':'';return `<div class="weekday" style="display:block"><b>${d}</b><select id="md_${i}" style="width:100%;margin-top:5px"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${info&&info.obraId===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select><div class="row" style="margin-top:5px;gap:6px"><select id="mf_${i}" style="flex:1"><option value="">Não trabalhou</option><option value="1" ${tipo==='1'?'selected':''}>Dia inteiro — 1 diária</option><option value="0.5" ${tipo==='0.5'?'selected':''}>Meio período — 0,5 diária</option><option value="custom" ${tipo==='custom'?'selected':''}>Personalizado</option></select><input id="mc_${i}" type="number" min="0" max="5" step="0.25" value="${tipo==='custom'?fator:''}" placeholder="Diárias" style="width:105px;${tipo==='custom'?'':'display:none'}"></div></div>`}).join('')+    '<div id="weekCalc" class="card" style="margin:10px 0 0;background:#f8fafc"><b>Resumo</b><div class="muted" style="margin-top:5px">Salve os dias para atualizar o total.</div></div>',
     'Salvar dias',function(){
       db.jornadas[w+'_'+fid]={};
-      days.forEach((d,i)=>{let v=document.getElementById('md_'+i).value;if(v)db.jornadas[w+'_'+fid][i]=v});
+      days.forEach((d,i)=>{let obra=document.getElementById('md_'+i).value,tipo=document.getElementById('mf_'+i).value;let fator=tipo==='1'?1:tipo==='0.5'?0.5:tipo==='custom'?Number(document.getElementById('mc_'+i).value):0;if(obra&&fator>0)db.jornadas[w+'_'+fid][i]={obraId:obra,fator}});
       save();closeModal();renderFuncionarios();toast('Dias atualizados');
     });
+  days.forEach((d,i)=>{let sel=document.getElementById('mf_'+i),inp=document.getElementById('mc_'+i);if(sel)sel.onchange=()=>{inp.style.display=sel.value==='custom'?'block':'none'}});
 }
 function editDespesa(id){
   const x=db.despesas.find(d=>d.id===id); if(!x)return;
