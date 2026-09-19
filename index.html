@@ -76,9 +76,9 @@ body{overflow-x:hidden}
 </style>
 
 <style>
-.appModal{display:none;position:fixed;inset:0;background:#0008;z-index:100;align-items:flex-end;justify-content:center;padding:12px}
+.appModal{display:none;position:fixed;inset:0;background:#0008;z-index:100;align-items:flex-end;justify-content:center;padding:12px;overflow-y:auto}
 .appModal.show{display:flex}
-.modalBox{width:min(480px,100%);background:#fff;border-radius:18px;padding:18px;box-shadow:0 15px 45px #0005}
+.modalBox{width:min(480px,100%);max-height:calc(100vh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:18px;padding:18px;box-shadow:0 15px 45px #0005}
 .modalTitle{font-size:19px;font-weight:800;color:#0b1f3a;margin-bottom:10px}
 .modalBox input{font-size:16px}
 </style>
@@ -475,12 +475,14 @@ function jornada(fid,week){return db.jornadas[week+'_'+fid]||{}}
 function jornadaInfo(v){
   if(!v)return null;
   if(typeof v==='string')return {obraId:v,fator:1};
+  if(Array.isArray(v))return v.filter(x=>x&&x.obraId&&Number(x.fator)>0).map(x=>({obraId:x.obraId,fator:Number(x.fator)||0}));
   if(typeof v==='object' && v.obraId)return {obraId:v.obraId,fator:Number(v.fator)||0};
   return null;
 }
+function jornadaSlots(v){const info=jornadaInfo(v);return !info?[]:(Array.isArray(info)?info:[info]);}
 function calcEmployee(fid,week){
  let f=db.funcionarios.find(x=>x.id===fid),j=jornada(fid,week),by={},daysWorked=0,fullDays=0,halfDays=0;
- Object.values(j).forEach(v=>{let info=jornadaInfo(v);if(info&&info.obraId&&info.fator>0){daysWorked+=info.fator;if(info.fator===1)fullDays++;if(info.fator===0.5)halfDays++;by[info.obraId]=(by[info.obraId]||0)+f.diaria*info.fator}});
+ Object.values(j).forEach(v=>{jornadaSlots(v).forEach(info=>{if(info&&info.obraId&&info.fator>0){daysWorked+=info.fator;if(info.fator===1)fullDays++;if(info.fator===0.5)halfDays++;by[info.obraId]=(by[info.obraId]||0)+f.diaria*info.fator}})});
  return {f,by,days:daysWorked,fullDays,halfDays,total:daysWorked*f.diaria}
 }
 function weekPaid(fid,week){return db.pagamentos.some(x=>x.tipo==='fechamento'&&x.funcionarioId===fid&&x.week===week)}
@@ -693,14 +695,58 @@ function renderFuncionarios(){
 function openEmployeeWeek(fid){
   let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
   let w=weekStart.value||monday(), j=jornada(fid,w);
+  const fractionOptions=(value)=>'<option value="">Não trabalhou</option><option value="1" '+(value===1?'selected':'')+'>Dia inteiro — 1 diária</option><option value="0.5" '+(value===0.5?'selected':'')+'>Meio período — 0,5 diária</option><option value="custom" '+(value>0&&value!==1&&value!==0.5?'selected':'')+'>Personalizado</option>';
+  const customValue=(value)=>value>0&&value!==1&&value!==0.5?value:'';
+  const slotData=(day,slot)=>{const arr=jornadaSlots(j[day]); return arr[slot]||{};};
   openModal('Semana de '+esc(f.nome),
-    '<div class="muted">Diária: '+brl(f.diaria)+' • Semana: '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+    '<div class="muted" style="margin:8px 0">Escolha a obra e quanto trabalhou em cada dia. Meio período vale 0,5 diária.</div>'+    days.map((d,i)=>{let info=jornadaInfo(j[i]);let fator=info?info.fator:0;let tipo=fator===1?'1':fator===0.5?'0.5':fator>0?'custom':'';return `<div class="weekday" style="display:block"><b>${d}</b><select id="md_${i}" style="width:100%;margin-top:5px"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${info&&info.obraId===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select><div class="row" style="margin-top:5px;gap:6px"><select id="mf_${i}" style="flex:1"><option value="">Não trabalhou</option><option value="1" ${tipo==='1'?'selected':''}>Dia inteiro — 1 diária</option><option value="0.5" ${tipo==='0.5'?'selected':''}>Meio período — 0,5 diária</option><option value="custom" ${tipo==='custom'?'selected':''}>Personalizado</option></select><input id="mc_${i}" type="number" min="0" max="5" step="0.25" value="${tipo==='custom'?fator:''}" placeholder="Diárias" style="width:105px;${tipo==='custom'?'':'display:none'}"></div></div>`}).join('')+    '<div id="weekCalc" class="card" style="margin:10px 0 0;background:#f8fafc"><b>Resumo</b><div class="muted" style="margin-top:5px">Salve os dias para atualizar o total.</div></div>',
+    '<div class="muted">Diária: '+brl(f.diaria)+' • Semana: '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+
+    '<div class="muted" style="margin:8px 0">Você pode dividir o mesmo dia entre até <b>2 obras/serviços</b>. Ex.: 0,5 diária em uma obra + 0,5 diária em outra. O sistema não permite ultrapassar 1 diária no mesmo dia.</div>'+ 
+    days.map((d,i)=>{let a=slotData(i,0),b=slotData(i,1);let ta=a.fator===1?'1':a.fator===0.5?'0.5':a.fator>0?'custom':'';let tb=b.fator===1?'1':b.fator===0.5?'0.5':b.fator>0?'custom':'';return `<div class="weekday" style="display:block;border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin:8px 0;background:#fafafa"><b>${d}</b>
+      <div class="muted" style="font-size:12px;margin-top:7px">Serviço/Obra 1</div>
+      <select id="md_${i}_0" style="width:100%;margin-top:5px"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${a.obraId===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select>
+      <div class="row" style="margin-top:5px;gap:6px"><select id="mf_${i}_0" style="flex:1">${fractionOptions(a.fator||0)}</select><input id="mc_${i}_0" type="number" min="0" max="1" step="0.25" value="${customValue(a.fator||0)}" placeholder="Diárias" style="width:105px;${ta==='custom'?'':'display:none'}"></div>
+      <div class="muted" style="font-size:12px;margin-top:10px">Serviço/Obra 2 <span style="opacity:.7">(opcional)</span></div>
+      <select id="md_${i}_1" style="width:100%;margin-top:5px"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${b.obraId===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select>
+      <div class="row" style="margin-top:5px;gap:6px"><select id="mf_${i}_1" style="flex:1">${fractionOptions(b.fator||0)}</select><input id="mc_${i}_1" type="number" min="0" max="1" step="0.25" value="${customValue(b.fator||0)}" placeholder="Diárias" style="width:105px;${tb==='custom'?'':'display:none'}"></div>
+      <div id="dayTotal_${i}" class="muted" style="margin-top:7px"></div>
+    </div>`}).join('')+
+    '<div id="weekCalc" class="card" style="margin:10px 0 0;background:#f8fafc"><b>Resumo</b><div class="muted" style="margin-top:5px">Salve os dias para atualizar o total.</div></div>',
     'Salvar dias',function(){
-      db.jornadas[w+'_'+fid]={};
-      days.forEach((d,i)=>{let obra=document.getElementById('md_'+i).value,tipo=document.getElementById('mf_'+i).value;let fator=tipo==='1'?1:tipo==='0.5'?0.5:tipo==='custom'?Number(document.getElementById('mc_'+i).value):0;if(obra&&fator>0)db.jornadas[w+'_'+fid][i]={obraId:obra,fator}});
+      const novo={};
+      for(let i=0;i<days.length;i++){
+        const d=days[i],slots=[];
+        for(let slot=0;slot<2;slot++){
+          let obra=document.getElementById('md_'+i+'_'+slot).value,tipo=document.getElementById('mf_'+i+'_'+slot).value;
+          let fator=tipo==='1'?1:tipo==='0.5'?0.5:tipo==='custom'?Number(document.getElementById('mc_'+i+'_'+slot).value):0;
+          if(obra&&fator>0)slots.push({obraId:obra,fator});
+        }
+        const total=slots.reduce((a,x)=>a+x.fator,0);
+        if(total>1.00001)return toast(d+': o total não pode passar de 1 diária. Divida entre as duas obras.');
+        if(slots.length)novo[i]=slots;
+      }
+      db.jornadas[w+'_'+fid]=novo;
       save();closeModal();renderFuncionarios();toast('Dias atualizados');
     });
-  days.forEach((d,i)=>{let sel=document.getElementById('mf_'+i),inp=document.getElementById('mc_'+i);if(sel)sel.onchange=()=>{inp.style.display=sel.value==='custom'?'block':'none'}});
+  days.forEach((d,i)=>{
+    for(let slot=0;slot<2;slot++){
+      let sel=document.getElementById('mf_'+i+'_'+slot),inp=document.getElementById('mc_'+i+'_'+slot);
+      if(sel)sel.onchange=()=>{inp.style.display=sel.value==='custom'?'block':'none';updateDayTotal(i)};
+      let obra=document.getElementById('md_'+i+'_'+slot); if(obra)obra.onchange=()=>updateDayTotal(i);
+      if(inp)inp.oninput=()=>updateDayTotal(i);
+    }
+    updateDayTotal(i);
+  });
+  function updateDayTotal(i){
+    let total=0;
+    for(let slot=0;slot<2;slot++){
+      let tipo=document.getElementById('mf_'+i+'_'+slot)?.value;
+      let v=tipo==='1'?1:tipo==='0.5'?0.5:tipo==='custom'?Number(document.getElementById('mc_'+i+'_'+slot)?.value):0;
+      total+=v;
+    }
+    const el=document.getElementById('dayTotal_'+i); if(!el)return;
+    el.textContent='Total do dia: '+total.toLocaleString('pt-BR',{maximumFractionDigits:2})+' diária(s)'+(total>1?' — ⚠️ acima do limite':'');
+    el.style.fontWeight='700'; el.style.color=total>1?'#b91c1c':'#64748b';
+  }
 }
 function editDespesa(id){
   const x=db.despesas.find(d=>d.id===id); if(!x)return;
