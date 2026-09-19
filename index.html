@@ -138,8 +138,9 @@ body{overflow-x:hidden}
   <div style="width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 40px #0002">
     <div style="text-align:center;margin-bottom:18px"><div style="font-size:28px;font-weight:900;color:#0b1f3a">CONTROLE DE OBRAS</div><div style="color:#64748b;font-size:13px;margin-top:5px">Acesso compartilhado entre seus aparelhos</div></div>
     <div id="authMsg" class="muted" style="min-height:18px;margin-bottom:8px"></div>
-    <label>E-mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="Seu e-mail">
+    <label>E-mail</label><input id="authEmail" type="email" autocomplete="username" placeholder="Seu e-mail">
     <label>Senha</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo de 6 caracteres">
+    <label style="display:flex;align-items:center;gap:8px;margin:10px 0 14px;font-weight:600;cursor:pointer"><input id="rememberEmail" type="checkbox" style="width:auto;margin:0"> Lembrar meu e-mail neste aparelho</label>
     <button type="button" class="btn full" onclick="entrar()">Entrar</button>
     <button type="button" class="btn light full" onclick="criarConta()">Criar acesso</button>
   </div>
@@ -269,13 +270,29 @@ const brl=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).fo
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch{return null}}
 function setSession(x){if(x)localStorage.setItem(SESSION_KEY,JSON.stringify(x));else localStorage.removeItem(SESSION_KEY)}
-async function api(path,opts={}){
+function saveRememberedEmail(email){if(email)localStorage.setItem('controle_obras_email',email);else localStorage.removeItem('controle_obras_email')}
+function loadRememberedEmail(){return localStorage.getItem('controle_obras_email')||''}
+async function renovarSessao(){
+  const session=getSession();
+  if(!session?.refresh_token)return false;
+  try{
+    const res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});
+    const data=await res.json();
+    if(!res.ok||!data?.access_token)throw new Error('Sessão expirada');
+    setSession(data);
+    return true;
+  }catch(e){setSession(null);return false}
+}
+async function api(path,opts={},retry=true){
   const session=getSession();
   const headers=Object.assign({'apikey':SUPABASE_KEY,'Content-Type':'application/json'},opts.headers||{});
   if(session?.access_token) headers.Authorization='Bearer '+session.access_token;
   const res=await fetch(SUPABASE_URL+path,Object.assign({},opts,{headers}));
   let data=null; try{data=await res.json()}catch{}
-  if(!res.ok){const msg=data?.msg||data?.message||data?.error_description||data?.error||('HTTP '+res.status); throw new Error(msg)}
+  if(!res.ok){
+    if(res.status===401 && retry && await renovarSessao()) return api(path,opts,false);
+    const msg=data?.msg||data?.message||data?.error_description||data?.error||('HTTP '+res.status); throw new Error(msg)
+  }
   return data;
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(db)); if(cloudReady) cloudSave()}
@@ -306,7 +323,9 @@ async function cloudLoad(){
 }
 async function entrar(){
   const email=document.getElementById('authEmail').value.trim(); const password=document.getElementById('authPassword').value;
+  const remember=document.getElementById('rememberEmail')?.checked;
   if(!email||!password)return setAuthMsg('Informe e-mail e senha.');
+  if(remember)saveRememberedEmail(email); else saveRememberedEmail('');
   setAuthMsg('Entrando...');
   try{
     const data=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
@@ -337,8 +356,17 @@ async function refreshCloud(){
   }catch(e){console.warn('Falha na atualização:',e)}
 }
 async function initAuth(){
+  const email=loadRememberedEmail();
+  const emailInput=document.getElementById('authEmail');
+  const rememberInput=document.getElementById('rememberEmail');
+  if(emailInput && email){emailInput.value=email;if(rememberInput)rememberInput.checked=true}
   const session=getSession();
-  if(session?.access_token){await cloudLoad()}
+  if(session?.access_token){
+    try{await cloudLoad();return}catch(e){console.warn('Sessão atual inválida:',e)}
+  }
+  if(session?.refresh_token && await renovarSessao()){
+    try{await cloudLoad();return}catch(e){console.warn('Não foi possível restaurar a sessão:',e)}
+  }
 }
 initAuth();
 setInterval(refreshCloud,3000);
