@@ -396,7 +396,7 @@ function totalObra(o){return o.valorInicial+db.acrescimos.filter(x=>x.obraId===o
 function received(o){return db.recebimentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function labor(o){return db.pagamentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function expenses(o){return db.despesas.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
-function saldoObra(o){return Math.max(0,totalObra(o)-received(o))}
+function saldoObra(o){return Math.max(0,totalObra(o)-received(o)-expenses(o))}
 function resultadoObra(o){return totalObra(o)-labor(o)-expenses(o)}
 function obraName(id){return db.obras.find(x=>x.id===id)?.nome||'Obra removida'}
 function fillSelect(id,blank='Selecione a obra'){let s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">'+blank+'</option>'+db.obras.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}
@@ -530,7 +530,7 @@ function openObra(id){
  <div class="card kpi"><div class="label">Recebido</div><div class="value greenText">${brl(rec)}</div></div>
  <div class="card kpi"><div class="label">Saldo restante</div><div class="value">${brl(saldoObra(o))}</div></div>
  </div>
- <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber do cliente</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Resultado após custos registrados</span><b>${brl(resultadoObra(o))}</b></div></div>
+ <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados (mão de obra + despesas)</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber do cliente</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Resultado após custos registrados</span><b>${brl(resultadoObra(o))}</b></div></div>
  <div class="row" style="margin-top:8px">
    <button type="button" class="btn green obraAction" style="flex:1" data-action="acrescimo" data-obra="${id}">+ Acréscimo</button>
    <button type="button" class="btn light obraAction" style="flex:1" data-action="orcamento" data-obra="${id}">✏️ Ajustar orçamento</button>
