@@ -177,10 +177,6 @@ body{overflow-x:hidden}
 <div class="grid">
  <div class="card kpi"><div class="label">Obras</div><div class="value" id="kObras">0</div></div>
  <div class="card kpi"><div class="label">Total das obras</div><div class="value" id="kTotal">R$ 0,00</div></div>
- <div class="card kpi"><div class="label">Recebido</div><div class="value greenText" id="kRecebido">R$ 0,00</div></div>
- <div class="card kpi"><div class="label">A receber</div><div class="value" id="kAReceber">R$ 0,00</div></div>
- <div class="card kpi"><div class="label">Mão de obra paga</div><div class="value" id="kMao">R$ 0,00</div></div>
- <div class="card kpi"><div class="label">Outras despesas</div><div class="value" id="kDesp">R$ 0,00</div></div>
 </div>
 
 <div class="card"><b>Recebimentos desta semana</b><div id="weekSummary" style="margin-top:8px"></div></div>
@@ -394,29 +390,7 @@ function showForm(id){document.getElementById(id).style.display='block'}
 function hideForm(id){document.getElementById(id).style.display='none'}
 function totalObra(o){return o.valorInicial+db.acrescimos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function received(o){return db.recebimentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
-function labor(o){
-  // Soma pagamentos de mão de obra já fechados e também semanas lançadas
-  // nas jornadas que ainda não foram fechadas, sem contar a mesma semana duas vezes.
-  const pagos=db.pagamentos.filter(x=>x.obraId===o.id&&x.tipo==='fechamento');
-  let total=pagos.reduce((a,x)=>a+(Number(x.valor)||0),0);
-  const semanasFuncionarios=new Set();
-  Object.keys(db.jornadas||{}).forEach(k=>{
-    const pos=k.lastIndexOf('_'); if(pos<0)return;
-    const week=k.slice(0,pos), fid=k.slice(pos+1);
-    if(!week||!fid)return;
-    const j=db.jornadas[k]||{};
-    const temObra=Object.values(j).some(v=>jornadaSlots(v).some(info=>info&&info.obraId===o.id&&Number(info.fator)>0));
-    if(!temObra||weekPaid(fid,week))return;
-    const chave=week+'_'+fid;
-    if(semanasFuncionarios.has(chave))return;
-    semanasFuncionarios.add(chave);
-    const c=calcEmployee(fid,week);
-    total+=Number(c.by[o.id])||0;
-  });
-  // Compatibilidade com registros antigos sem tipo, caso existam.
-  total+=db.pagamentos.filter(x=>x.obraId===o.id&&x.tipo!=='fechamento').reduce((a,x)=>a+(Number(x.valor)||0),0);
-  return total;
-}
+function labor(o){return db.pagamentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function expenses(o){return db.despesas.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function saldoObra(o){return Math.max(0,totalObra(o)-received(o))}
 function resultadoObra(o){return totalObra(o)-labor(o)-expenses(o)}
@@ -523,7 +497,7 @@ function addDespesa(){let obra=dObra.value,desc=dDesc.value.trim(),v=Number(dVal
 
 function renderResumo(){
  let total=db.obras.reduce((a,o)=>a+totalObra(o),0),rec=db.recebimentos.reduce((a,x)=>a+x.valor,0),mao=db.pagamentos.reduce((a,x)=>a+x.valor,0),desp=db.despesas.reduce((a,x)=>a+x.valor,0);
- kObras.textContent=db.obras.length;kTotal.textContent=brl(total);kRecebido.textContent=brl(rec);kAReceber.textContent=brl(Math.max(0,total-rec));kMao.textContent=brl(mao);kDesp.textContent=brl(desp);
+ kObras.textContent=db.obras.length;kTotal.textContent=brl(total);
  let w=monday(),actual=db.recebimentos.filter(x=>x.data>=w&&x.data<=addDays(w,6)).reduce((a,x)=>a+x.valor,0),prev=db.obras.reduce((a,o)=>a+o.valorSemanal,0);
  weekSummary.innerHTML=`<div class="between row"><span>Previsto</span><b>${brl(prev)}</b></div><div class="between row"><span>Recebido</span><b class="greenText">${brl(actual)}</b></div><div class="progress"><div style="width:${prev?Math.min(100,actual/prev*100):0}%"></div></div><div class="muted">Semana de ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</div>`
 let alertRows=[];
@@ -552,7 +526,7 @@ function openObra(id){
  <div class="card kpi"><div class="label">Recebido</div><div class="value greenText">${brl(rec)}</div></div>
  <div class="card kpi"><div class="label">Saldo restante</div><div class="value">${brl(saldoObra(o))}</div></div>
  </div>
- <div class="card"><div class="between row"><b>Valor total</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Total de custos (mão de obra + despesas)</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber</span><b>${brl(Math.max(0,tot-rec))}</b></div></div>
+ <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber do cliente</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Resultado após custos registrados</span><b>${brl(resultadoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Caixa desta obra</span><b class="greenText">${brl(rec-cust)}</b></div></div>
  <div class="row" style="margin-top:8px">
    <button type="button" class="btn green obraAction" style="flex:1" data-action="acrescimo" data-obra="${id}">+ Acréscimo</button>
    <button type="button" class="btn light obraAction" style="flex:1" data-action="orcamento" data-obra="${id}">✏️ Ajustar orçamento</button>
