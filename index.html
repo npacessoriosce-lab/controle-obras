@@ -164,7 +164,8 @@ body{overflow-x:hidden}
   <button type="button" class="sideBtn" data-tab="obras" onclick="go('obras');closeSidebar()">🏗️ <span>Obras</span></button>
   <button type="button" class="sideBtn" data-tab="receber" onclick="go('receber');closeSidebar()">💰 <span>Receber</span></button>
   <button type="button" class="sideBtn" data-tab="funcionarios" onclick="go('funcionarios');closeSidebar()">👷 <span>Funcionários</span></button>
-  <button type="button" class="sideBtn" data-tab="caixa" onclick="go('caixa');closeSidebar()">💵 <span>Caixa</span></button>
+  <button type="button" class="sideBtn" data-tab="caixa" onclick="go('caixa');closeSidebar()">🧾 <span>Despesas</span></button>
+  <button type="button" class="sideBtn" data-tab="recebidos" onclick="go('recebidos');closeSidebar()">💰 <span>Recebidos</span></button>
   <div class="menuTitle lower">GERAL</div>
   <button type="button" class="sideBtn" onclick="openCompanySettings();closeSidebar()">🖼️ <span>Empresa / Logomarca</span></button>
   <button type="button" class="sideBtn" onclick="exportData();closeSidebar()">💾 <span>Backup</span></button>
@@ -179,9 +180,9 @@ body{overflow-x:hidden}
  <div class="card kpi"><div class="label">Recebido</div><div class="value greenText" id="kRecebido">R$ 0,00</div></div>
  <div class="card kpi"><div class="label">A receber</div><div class="value" id="kAReceber">R$ 0,00</div></div>
  <div class="card kpi"><div class="label">Mão de obra paga</div><div class="value" id="kMao">R$ 0,00</div></div>
- <div class="card kpi"><div class="label">Outras despesas</div><div class="value" id="kDesp">R$ 0,00</div></div>
+ <div class="card kpi"><div class="label">Despesas com materiais e compras</div><div class="value" id="kDesp">R$ 0,00</div></div>
 </div>
-<div class="card"><div class="between row"><b>Caixa geral</b><span class="money" id="kCaixa">R$ 0,00</span></div><div class="muted" style="margin-top:5px">Recebimentos − pagamentos de funcionários − despesas.</div></div>
+
 <div class="card"><b>Recebimentos desta semana</b><div id="weekSummary" style="margin-top:8px"></div></div>
 <div class="card"><b>🔔 Atenção</b><div id="alerts" style="margin-top:8px"></div></div>
 </section>
@@ -231,24 +232,26 @@ body{overflow-x:hidden}
 </section>
 
 <section id="caixa" class="screen">
-<h2>Caixa</h2>
-<div class="grid">
- <div class="card kpi"><div class="label">Entradas</div><div class="value greenText" id="cEntradas">R$ 0,00</div></div>
- <div class="card kpi"><div class="label">Saídas</div><div class="value redText" id="cSaidas">R$ 0,00</div></div>
-</div>
+<h2>Despesas</h2>
 <div class="card">
 <label>Obra</label><select id="dObra"></select>
 <label>Tipo de despesa</label><select id="dTipo"><option value="material">🧱 Material</option><option value="combustivel">🚗 Combustível</option><option value="outros">📦 Outros</option></select>
-<label>Descrição</label><input id="dDesc" placeholder="Ex.: cimento, areia, combustível...">
+<label>Descrição</label><input id="dDesc" placeholder="Ex.: cimento, madeira, betoneira...">
 <label>Valor</label><input id="dValor" type="number" step="0.01">
 <label>Data</label><input id="dData" type="date">
-<button class="btn red full" onclick="addDespesa()">Registrar despesa da obra</button><div class="muted" style="margin-top:7px">A despesa será descontada automaticamente do saldo restante da obra.</div>
+<button class="btn red full" onclick="addDespesa()">Registrar despesa</button><div class="muted" style="margin-top:7px">Registre aqui somente compras e gastos da obra. Os recebimentos do cliente ficam separados.</div>
 </div>
 <div id="despList"></div>
 <div class="card">
 <b>Backup</b><div class="muted" style="margin:5px 0 9px">Exporte seus dados para guardar uma cópia ou trocar de aparelho.</div>
 <div class="row"><button class="btn light" style="flex:1" onclick="exportData()">Exportar</button><label for="importInput" class="btn light" style="margin:0;flex:1;text-align:center">Importar</label><input id="importInput" class="file" type="file" accept=".json"></div>
 </div>
+</section>
+
+<section id="recebidos" class="screen">
+<h2>Recebidos</h2>
+<div class="card kpi"><div class="label">Total recebido de todos os clientes</div><div class="value greenText" id="totalRecebidos">R$ 0,00</div></div>
+<div id="recebidosPorObra"></div>
 </section>
 
 <section id="detalhe" class="screen">
@@ -498,7 +501,7 @@ function addDespesa(){let obra=dObra.value,desc=dDesc.value.trim(),v=Number(dVal
 
 function renderResumo(){
  let total=db.obras.reduce((a,o)=>a+totalObra(o),0),rec=db.recebimentos.reduce((a,x)=>a+x.valor,0),mao=db.pagamentos.reduce((a,x)=>a+x.valor,0),desp=db.despesas.reduce((a,x)=>a+x.valor,0);
- kObras.textContent=db.obras.length;kTotal.textContent=brl(total);kRecebido.textContent=brl(rec);kAReceber.textContent=brl(Math.max(0,total-rec));kMao.textContent=brl(mao);kDesp.textContent=brl(desp);kCaixa.textContent=brl(rec-mao-desp);
+ kObras.textContent=db.obras.length;kTotal.textContent=brl(total);kRecebido.textContent=brl(rec);kAReceber.textContent=brl(Math.max(0,total-rec));kMao.textContent=brl(mao);kDesp.textContent=brl(desp);
  let w=monday(),actual=db.recebimentos.filter(x=>x.data>=w&&x.data<=addDays(w,6)).reduce((a,x)=>a+x.valor,0),prev=db.obras.reduce((a,o)=>a+o.valorSemanal,0);
  weekSummary.innerHTML=`<div class="between row"><span>Previsto</span><b>${brl(prev)}</b></div><div class="between row"><span>Recebido</span><b class="greenText">${brl(actual)}</b></div><div class="progress"><div style="width:${prev?Math.min(100,actual/prev*100):0}%"></div></div><div class="muted">Semana de ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</div>`
 let alertRows=[];
@@ -514,7 +517,7 @@ alerts.innerHTML=alertRows.length?alertRows.map(x=>`<div style="padding:7px 0;bo
 }
 function renderObras(){
  let el=obrasList;if(!db.obras.length){el.innerHTML='<div class="empty">Nenhuma obra cadastrada.</div>';return}
- el.innerHTML=db.obras.map(o=>{let tot=totalObra(o),rec=received(o),cust=labor(o)+expenses(o),rest=saldoObra(o),pct=tot?Math.min(100,(rec+cust)/tot*100):0;
+ el.innerHTML=db.obras.map(o=>{let tot=totalObra(o),rec=received(o),rest=saldoObra(o),pct=tot?Math.min(100,rec/tot*100):0;
  return `<div class="card" onclick="openObra('${o.id}')"><div class="between row"><div><div class="obra-title">${esc(o.nome)}</div><div class="muted">${esc(o.cliente||'Sem cliente')}</div></div><span>›</span></div><div class="progress"><div style="width:${pct}%"></div></div><div class="grid"><div><div class="muted">Total</div><b>${brl(tot)}</b></div><div><div class="muted">A receber</div><b>${brl(rest)}</b></div></div></div>`}).join('')
 }
 function openObra(id){
@@ -527,7 +530,7 @@ function openObra(id){
  <div class="card kpi"><div class="label">Recebido</div><div class="value greenText">${brl(rec)}</div></div>
  <div class="card kpi"><div class="label">Saldo restante</div><div class="value">${brl(saldoObra(o))}</div></div>
  </div>
- <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber do cliente</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Resultado após custos registrados</span><b>${brl(resultadoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Caixa desta obra</span><b class="greenText">${brl(rec-cust)}</b></div></div>
+ <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber do cliente</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Resultado após custos registrados</span><b>${brl(resultadoObra(o))}</b></div></div>
  <div class="row" style="margin-top:8px">
    <button type="button" class="btn green obraAction" style="flex:1" data-action="acrescimo" data-obra="${id}">+ Acréscimo</button>
    <button type="button" class="btn light obraAction" style="flex:1" data-action="orcamento" data-obra="${id}">✏️ Ajustar orçamento</button>
@@ -663,7 +666,7 @@ function renderWeekPayrollSummary(week){
   }
   weekPayrollSummary.innerHTML=
     '<div class="between row"><b>💰 Valor da mão de obra da semana</b><b>'+brl(total)+'</b></div>'+
-    '<div class="muted" style="margin:5px 0 10px">Use este total como referência para pedir o pagamento ao cliente. Quando ele pagar, registre em Recebimentos; o valor será descontado do contrato.</div>'+
+    '<div class="muted" style="margin:5px 0 10px">Valor da mão de obra calculado pelos dias lançados. Use como referência para conversar com o cliente; quando ele pagar, registre em Receber para abater do saldo do contrato.</div>'+
     rows.map(([oid,v])=>`<div class="weekObraRow"><span>🏗️ ${esc(obraName(oid))}</span><b>${brl(v)}</b></div>`).join('')+
     '<div class="totalline"><span>Total geral da semana</span><span>'+brl(total)+'</span></div>';
 }
@@ -769,9 +772,15 @@ function editDespesa(id){
     });
 }
 function renderCaixa(){
- fillSelect('dObra');dData.value=dData.value||today();let entradas=db.recebimentos.reduce((a,x)=>a+x.valor,0),saidas=db.pagamentos.reduce((a,x)=>a+x.valor,0)+db.despesas.reduce((a,x)=>a+x.valor,0);
- cEntradas.textContent=brl(entradas);cSaidas.textContent=brl(saidas);
+ fillSelect('dObra');dData.value=dData.value||today();
  despList.innerHTML=db.despesas.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card"><div class="between row"><b>${esc(obraName(x.obraId))}</b><b class="redText">${brl(x.valor)}</b></div><div class="small">${x.tipo==='material'?'🧱 Material':x.tipo==='combustivel'?'🚗 Combustível':'📦 Outros'} • ${esc(x.descricao)}</div><div class="muted">${fmtDate(x.data)}</div><button type="button" class="btn light full" onclick="editDespesa('${x.id}')">✏️ Editar lançamento</button></div>`).join('')||'<div class="empty">Nenhuma despesa.</div>'
+}
+function renderRecebidos(){
+ const total=db.recebimentos.reduce((a,x)=>a+(Number(x.valor)||0),0);
+ const el=document.getElementById('totalRecebidos');if(el)el.textContent=brl(total);
+ const porObra=db.obras.map(o=>({obra:o,total:db.recebimentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+(Number(x.valor)||0),0)}));
+ const lista=document.getElementById('recebidosPorObra');
+ if(lista)lista.innerHTML=porObra.map(x=>`<div class="card"><div class="between row"><b>${esc(x.obra.nome)}</b><b class="greenText">${brl(x.total)}</b></div><div class="muted">Total recebido nesta obra</div></div>`).join('')||'<div class="empty">Nenhuma obra cadastrada.</div>';
 }
 function openCompanySettings(){
   openModal('Dados da empresa',
@@ -809,7 +818,7 @@ function gerarRecibo(id){
   w.document.open();w.document.write(html);w.document.close();
 }
 
-function renderAll(){renderResumo();renderObras();renderReceber();renderFuncionarios();renderCaixa();document.getElementById('brandName').textContent=db.empresa||'Controle de Obras';if(db.logo){
+function renderAll(){renderResumo();renderObras();renderReceber();renderFuncionarios();renderCaixa();renderRecebidos();document.getElementById('brandName').textContent=db.empresa||'Controle de Obras';if(db.logo){
   logoBox.innerHTML=`<img src="${db.logo}">`;
   sideLogoBox.innerHTML=`<img src="${db.logo}">`;
 } else {
