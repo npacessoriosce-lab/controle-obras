@@ -1,3 +1,4 @@
+```
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -392,7 +393,8 @@ function totalObra(o){return o.valorInicial+db.acrescimos.filter(x=>x.obraId===o
 function received(o){return db.recebimentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function labor(o){return db.pagamentos.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
 function expenses(o){return db.despesas.filter(x=>x.obraId===o.id).reduce((a,x)=>a+x.valor,0)}
-function saldoObra(o){return Math.max(0,totalObra(o)-received(o)-labor(o)-expenses(o))}
+function saldoObra(o){return Math.max(0,totalObra(o)-received(o))}
+function resultadoObra(o){return totalObra(o)-labor(o)-expenses(o)}
 function obraName(id){return db.obras.find(x=>x.id===id)?.nome||'Obra removida'}
 function fillSelect(id,blank='Selecione a obra'){let s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">'+blank+'</option>'+db.obras.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
@@ -457,23 +459,17 @@ function editFuncionario(id){
 }
 function deleteFuncionario(id){
   const f=db.funcionarios.find(x=>x.id===id); if(!f)return;
-  if(f.ativo===false)return reativarFuncionario(id);
-  openModal('Inativar funcionário',
-    '<p>Deseja inativar <b>'+esc(f.nome)+'</b>?</p><p class="muted">O funcionário sairá da lista de ativos, mas o histórico de dias, pagamentos e semanas fechadas será preservado. Você poderá reativá-lo depois.</p>',
-    'Inativar',function(){
-      f.ativo=false;
-      save(); closeModal(); renderAll(); toast('Funcionário inativado; histórico preservado');
+  openModal('Excluir funcionário',
+    '<p>Deseja excluir <b>'+esc(f.nome)+'</b>?</p><p class="muted">Os pagamentos já registrados não serão apagados. Os lançamentos de dias desse funcionário serão removidos.</p>',
+    'Excluir',function(){
+      db.funcionarios=db.funcionarios.filter(x=>x.id!==id);
+      Object.keys(db.jornadas).forEach(k=>{if(k.endsWith('_'+id))delete db.jornadas[k]});
+      save(); closeModal(); renderAll(); toast('Funcionário excluído');
     });
-}
-function reativarFuncionario(id){
-  const f=db.funcionarios.find(x=>x.id===id); if(!f)return;
-  openModal('Reativar funcionário',
-    '<p>Deseja reativar <b>'+esc(f.nome)+'</b>?</p><p class="muted">Ele voltará a poder lançar dias e receber pagamentos.</p>',
-    'Reativar',function(){f.ativo=true;save();closeModal();renderAll();toast('Funcionário reativado')});
 }
 function addFuncionario(){
  let nome=fNome.value.trim(),diaria=Number(fDiaria.value);if(!nome||!diaria)return toast('Preencha nome e diária');
- db.funcionarios.push({id:uid(),nome,diaria,ativo:true});save();fNome.value=fDiaria.value='';hideForm('funcForm');toast('Funcionário cadastrado');renderAll()
+ db.funcionarios.push({id:uid(),nome,diaria});save();fNome.value=fDiaria.value='';hideForm('funcForm');toast('Funcionário cadastrado');renderAll()
 }
 const days=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
 function setJornada(fid,week,day,valor){let k=week+'_'+fid;db.jornadas[k]=db.jornadas[k]||{};db.jornadas[k][day]=valor;save();renderFuncionarios()}
@@ -502,7 +498,7 @@ function addDespesa(){let obra=dObra.value,desc=dDesc.value.trim(),v=Number(dVal
 
 function renderResumo(){
  let total=db.obras.reduce((a,o)=>a+totalObra(o),0),rec=db.recebimentos.reduce((a,x)=>a+x.valor,0),mao=db.pagamentos.reduce((a,x)=>a+x.valor,0),desp=db.despesas.reduce((a,x)=>a+x.valor,0);
- kObras.textContent=db.obras.length;kTotal.textContent=brl(total);kRecebido.textContent=brl(rec);kAReceber.textContent=brl(Math.max(0,total-rec-mao-desp));kMao.textContent=brl(mao);kDesp.textContent=brl(desp);kCaixa.textContent=brl(rec-mao-desp);
+ kObras.textContent=db.obras.length;kTotal.textContent=brl(total);kRecebido.textContent=brl(rec);kAReceber.textContent=brl(Math.max(0,total-rec));kMao.textContent=brl(mao);kDesp.textContent=brl(desp);kCaixa.textContent=brl(rec-mao-desp);
  let w=monday(),actual=db.recebimentos.filter(x=>x.data>=w&&x.data<=addDays(w,6)).reduce((a,x)=>a+x.valor,0),prev=db.obras.reduce((a,o)=>a+o.valorSemanal,0);
  weekSummary.innerHTML=`<div class="between row"><span>Previsto</span><b>${brl(prev)}</b></div><div class="between row"><span>Recebido</span><b class="greenText">${brl(actual)}</b></div><div class="progress"><div style="width:${prev?Math.min(100,actual/prev*100):0}%"></div></div><div class="muted">Semana de ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</div>`
 let alertRows=[];
@@ -531,7 +527,7 @@ function openObra(id){
  <div class="card kpi"><div class="label">Recebido</div><div class="value greenText">${brl(rec)}</div></div>
  <div class="card kpi"><div class="label">Saldo restante</div><div class="value">${brl(saldoObra(o))}</div></div>
  </div>
- <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo restante da obra</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Caixa desta obra</span><b class="greenText">${brl(rec-cust)}</b></div></div>
+ <div class="card"><div class="between row"><b>Valor atualizado</b><b>${brl(tot)}</b></div><div class="between row" style="margin-top:7px"><span>Recebido</span><b>${brl(rec)}</b></div><div class="between row" style="margin-top:7px"><span>Custos registrados</span><b>${brl(cust)}</b></div><div class="between row" style="margin-top:7px"><span>Saldo a receber do cliente</span><b>${brl(saldoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Resultado após custos registrados</span><b>${brl(resultadoObra(o))}</b></div><div class="between row" style="margin-top:7px"><span>Caixa desta obra</span><b class="greenText">${brl(rec-cust)}</b></div></div>
  <div class="row" style="margin-top:8px">
    <button type="button" class="btn green obraAction" style="flex:1" data-action="acrescimo" data-obra="${id}">+ Acréscimo</button>
    <button type="button" class="btn light obraAction" style="flex:1" data-action="orcamento" data-obra="${id}">✏️ Ajustar orçamento</button>
@@ -539,7 +535,6 @@ function openObra(id){
  <button type="button" class="btn red full obraAction" data-action="excluir" data-obra="${id}">🗑️ Excluir obra</button>
  <div class="card"><b>Acréscimos / ajustes do orçamento</b>${ac.length?'<table><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr>'+ac.map(x=>`<tr><td>${fmtDate(x.data)}</td><td>${esc(x.descricao)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum acréscimo.</div>'}</div>
  <div class="card"><b>Recebimentos</b>${rr.length?'<table><tr><th>Data</th><th>Valor</th></tr>'+rr.map(x=>`<tr><td>${fmtDate(x.data)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum recebimento.</div>'}</div>
- <div class="card"><b>Mão de obra</b>${pp.length?'<table><tr><th>Semana</th><th>Funcionário</th><th>Valor</th></tr>'+pp.map(x=>`<tr><td>${fmtDate(x.week)}</td><td>${esc(db.funcionarios.find(f=>f.id===x.funcionarioId)?.nome||'')}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum pagamento.</div>'}</div>
  <div class="card"><b>Despesas</b>
  <div class="chips" style="margin-top:8px">
  <span class="chip">🧱 Material: ${brl(dd.filter(x=>x.tipo==='material').reduce((a,x)=>a+x.valor,0))}</span>
@@ -601,7 +596,7 @@ function closeCurrentWeek(){
     '<div class="muted" style="margin-top:8px">Ao confirmar, cada valor será lançado na respectiva obra. Funcionários já pagos não serão duplicados.</div>',
     'Confirmar pagamento',function(){
       let count=0;
-      db.funcionarios.filter(f=>f.ativo!==false).forEach(f=>{
+      db.funcionarios.forEach(f=>{
         if(!weekPaid(f.id,w)){
           const c=calcEmployee(f.id,w);
           if(c.days){
@@ -650,7 +645,7 @@ function reabrirSemana(w){
 function goCurrentWeek(){weekStart.value=monday();renderFuncionarios();toast('Semana atual selecionada')}
 function calcWeekByObra(week){
   const by={};
-  db.funcionarios.filter(f=>f.ativo!==false).forEach(f=>{
+  db.funcionarios.forEach(f=>{
     const c=calcEmployee(f.id,week);
     Object.entries(c.by).forEach(([obraId,v])=>{
       by[obraId]=(by[obraId]||0)+v;
@@ -667,8 +662,8 @@ function renderWeekPayrollSummary(week){
     return;
   }
   weekPayrollSummary.innerHTML=
-    '<div class="between row"><b>💰 Mão de obra da semana</b><b>'+brl(total)+'</b></div>'+
-    '<div class="muted" style="margin:5px 0 10px">Total de todos os funcionários, separado automaticamente por obra.</div>'+
+    '<div class="between row"><b>💰 Valor da mão de obra da semana</b><b>'+brl(total)+'</b></div>'+
+    '<div class="muted" style="margin:5px 0 10px">Use este total como referência para pedir o pagamento ao cliente. Quando ele pagar, registre em Recebimentos; o valor será descontado do contrato.</div>'+
     rows.map(([oid,v])=>`<div class="weekObraRow"><span>🏗️ ${esc(obraName(oid))}</span><b>${brl(v)}</b></div>`).join('')+
     '<div class="totalline"><span>Total geral da semana</span><span>'+brl(total)+'</span></div>';
 }
@@ -678,12 +673,12 @@ function renderFuncionarios(){
   renderWeekPayrollSummary(w);
   renderWeekHistory();
   funcList.innerHTML=db.funcionarios.map(f=>{
-    let c=calcEmployee(f.id,w), paid=weekPaid(f.id,w), inactive=f.ativo===false;
+    let c=calcEmployee(f.id,w), paid=weekPaid(f.id,w);
     let resumo=Object.entries(c.by).map(([oid,v])=>`${esc(obraName(oid))}: ${brl(v)}`).join(' • ');
-    return `<div class="employee compactEmployee" style="${inactive?'opacity:.78;background:#f8fafc':''}">
+    return `<div class="employee compactEmployee">
       <div class="between row">
         <div>
-          <b>${esc(f.nome)}</b> ${inactive?'<span class="chip" style="background:#e5e7eb">INATIVO</span>':''}
+          <b>${esc(f.nome)}</b>
           <div class="muted">Diária: ${brl(f.diaria)} • ${c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})} diária(s) equivalente(s)${c.fullDays?' • '+c.fullDays+' inteiro(s)':''}${c.halfDays?' • '+c.halfDays+' meio(s)':''}</div>
         </div>
         <b class="employeeTotal">${brl(c.total)}</b>
@@ -691,23 +686,22 @@ function renderFuncionarios(){
       <div class="muted employeeResumo">${resumo||'Nenhum dia lançado nesta semana.'}</div>
       <div class="row employeeActions">
         <button type="button" class="btn light" style="flex:1" onclick="openEmployeeWeek('${f.id}')">📅 Dias</button>
-        ${inactive?`<button type="button" class="btn green" style="flex:1" onclick="reativarFuncionario('${f.id}')">↻ Reativar</button>`:`<button type="button" class="btn ${paid?'light':'green'}" style="flex:1" ${paid?'disabled':''} onclick="payWeek('${f.id}','${w}')">${paid?'✓ Paga':'💵 Pagar'}</button>
+        <button type="button" class="btn ${paid?'light':'green'}" style="flex:1" ${paid?'disabled':''} onclick="payWeek('${f.id}','${w}')">${paid?'✓ Paga':'💵 Pagar'}</button>
         <button type="button" class="btn light employeeEditBtn" onclick="editFuncionario('${f.id}')">✏️</button>
-        <button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">⏸️</button>`}
+        <button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">🗑️</button>
       </div>
     </div>`;
   }).join('')||'<div class="empty">Cadastre os funcionários.</div>'
 }
 function openEmployeeWeek(fid){
   let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
-  const somenteLeitura=f.ativo===false;
   let w=weekStart.value||monday(), j=jornada(fid,w);
   const fractionOptions=(value)=>'<option value="">Não trabalhou</option><option value="1" '+(value===1?'selected':'')+'>Dia inteiro — 1 diária</option><option value="0.5" '+(value===0.5?'selected':'')+'>Meio período — 0,5 diária</option><option value="custom" '+(value>0&&value!==1&&value!==0.5?'selected':'')+'>Personalizado</option>';
   const customValue=(value)=>value>0&&value!==1&&value!==0.5?value:'';
   const slotData=(day,slot)=>{const arr=jornadaSlots(j[day]); return arr[slot]||{};};
-  openModal((somenteLeitura?'Histórico de dias — ':'Semana de ')+esc(f.nome),
+  openModal('Semana de '+esc(f.nome),
     '<div class="muted">Diária: '+brl(f.diaria)+' • Semana: '+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</div>'+
-    '<div class="muted" style="margin:8px 0">'+(somenteLeitura?'Funcionário inativo: este histórico está somente para consulta.':'Você pode dividir o mesmo dia entre até <b>2 obras/serviços</b>. Ex.: 0,5 diária em uma obra + 0,5 diária em outra. O sistema não permite ultrapassar 1 diária no mesmo dia.')+'</div>'+ 
+    '<div class="muted" style="margin:8px 0">Você pode dividir o mesmo dia entre até <b>2 obras/serviços</b>. Ex.: 0,5 diária em uma obra + 0,5 diária em outra. O sistema não permite ultrapassar 1 diária no mesmo dia.</div>'+ 
     days.map((d,i)=>{let a=slotData(i,0),b=slotData(i,1);let ta=a.fator===1?'1':a.fator===0.5?'0.5':a.fator>0?'custom':'';let tb=b.fator===1?'1':b.fator===0.5?'0.5':b.fator>0?'custom':'';return `<div class="weekday" style="display:block;border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin:8px 0;background:#fafafa"><b>${d}</b>
       <div class="muted" style="font-size:12px;margin-top:7px">Serviço/Obra 1</div>
       <select id="md_${i}_0" style="width:100%;margin-top:5px"><option value="">Não trabalhou</option>${db.obras.map(o=>`<option value="${o.id}" ${a.obraId===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}</select>
@@ -718,8 +712,7 @@ function openEmployeeWeek(fid){
       <div id="dayTotal_${i}" class="muted" style="margin-top:7px"></div>
     </div>`}).join('')+
     '<div id="weekCalc" class="card" style="margin:10px 0 0;background:#f8fafc"><b>Resumo</b><div class="muted" style="margin-top:5px">Salve os dias para atualizar o total.</div></div>',
-    somenteLeitura?'Fechar':'Salvar dias',function(){
-      if(somenteLeitura){closeModal();return;}
+    'Salvar dias',function(){
       const novo={};
       for(let i=0;i<days.length;i++){
         const d=days[i],slots=[];
@@ -735,7 +728,6 @@ function openEmployeeWeek(fid){
       db.jornadas[w+'_'+fid]=novo;
       save();closeModal();renderFuncionarios();toast('Dias atualizados');
     });
-  if(somenteLeitura){document.querySelectorAll('#modalBody select,#modalBody input').forEach(el=>el.disabled=true);}
   days.forEach((d,i)=>{
     for(let slot=0;slot<2;slot++){
       let sel=document.getElementById('mf_'+i+'_'+slot),inp=document.getElementById('mc_'+i+'_'+slot);
@@ -952,3 +944,4 @@ document.addEventListener('pointerup',function(e){
 </script>
 </body>
 </html>
+```
