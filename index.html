@@ -81,6 +81,28 @@ body{overflow-x:hidden}
 .modalBox{width:min(480px,100%);max-height:calc(100vh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:18px;padding:18px;box-shadow:0 15px 45px #0005}
 .modalTitle{font-size:19px;font-weight:800;color:#0b1f3a;margin-bottom:10px}
 .modalBox input{font-size:16px}
+
+/* Relatório financeiro em formato de planilha */
+.appModal.reportModal{align-items:center;padding:16px}
+.reportModal .modalBox{width:min(1040px,100%);max-height:92vh;border-radius:14px;padding:20px}
+.reportModal .modalTitle{font-size:21px;border-bottom:3px solid #f5c400;padding-bottom:12px;margin-bottom:14px}
+.reportModal .modalFooter{display:none}
+.reportToolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.reportToolbar .btn{flex:1;min-width:150px}
+.reportGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0 16px}
+.reportCell{border:1px solid #dbe2ea;border-radius:9px;padding:11px;background:#f8fafc;min-width:0}
+.reportCell small{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:.35px}
+.reportCell strong{display:block;font-size:17px;margin-top:6px;overflow-wrap:anywhere}
+.reportSheet{border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;background:#fff}
+.reportSheetTitle{padding:11px 12px;background:#0b1f3a;color:#fff;font-weight:800;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.reportTableWrap{overflow-x:auto}
+.reportSheet table{min-width:650px;font-size:12px}
+.reportSheet th{background:#eaf0f7;color:#0b1f3a;font-size:10px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.reportSheet td,.reportSheet th{padding:10px 9px;border:1px solid #e2e8f0}
+.reportSheet tbody tr:nth-child(even){background:#f8fafc}
+.reportSheet td:last-child,.reportSheet th:last-child{text-align:right;white-space:nowrap;font-weight:700}
+.reportNote{font-size:11px;color:#64748b;line-height:1.5;margin-top:10px}
+@media(max-width:650px){.appModal.reportModal{padding:7px}.reportModal .modalBox{padding:13px;max-height:96vh}.reportGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.reportCell strong{font-size:15px}.reportToolbar .btn{min-width:120px;font-size:12px;padding:10px 8px}}
 </style>
 
 <style>
@@ -138,6 +160,42 @@ body{overflow-x:hidden}
 .reportKpi b{display:block;font-size:16px;margin-top:5px;overflow-wrap:anywhere}
 .reportKpi small+small{margin-top:4px;line-height:1.4}
 </style>
+
+<style>
+.weekPickerCard{padding:16px;border:1px solid #dbe3ed}
+.weekPickerHeading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.weekPickerControls{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center;margin-top:12px}
+.weekPickerControls .btn{height:44px;padding:8px;font-size:22px}
+.weekPickerControls input{height:44px;text-align:center;font-weight:700;color:#0b1f3a}
+.weekPickerFooter{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.weekPickerFooter .btn{padding:8px 12px;font-size:12px}
+.weekSectionHeading{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}
+.employeeCard{padding:14px;border:1px solid #dfe5ed;border-radius:15px;background:#fff;margin-bottom:10px}
+.employeeCardTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.employeeName{font-size:16px;font-weight:800;color:#0b1f3a}
+.employeeDaily{font-size:11px;color:#64748b;margin-top:4px}
+.employeeWeekTotal{text-align:right;white-space:nowrap;font-size:18px;font-weight:900;color:#0b1f3a}
+.employeeWeekMeta{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 8px}
+.employeePill{background:#f1f5f9;border-radius:20px;padding:6px 9px;font-size:11px;color:#334155}
+.employeeWorkList{font-size:12px;color:#475569;line-height:1.5;padding:8px 10px;background:#f8fafc;border-radius:9px}
+.employeeCardActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.employeeCardActions .btn{padding:10px 8px;font-size:12px}
+.employeeUtilityActions{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+.employeeUtilityActions .btn{padding:7px 10px;font-size:11px}
+.employeeStatus{font-size:10px;font-weight:800;border-radius:20px;padding:5px 8px;display:inline-block;margin-top:7px}
+.employeeStatus.paid{background:#ecfdf5;color:#047857}
+.employeeStatus.pending{background:#fff7ed;color:#9a3412}
+.employeeStatus.empty{background:#f1f5f9;color:#64748b}
+.weekPayrollSummary{border:1px solid #f2d65c;background:#fffdf2}
+.weekSummaryTop{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.weekSummaryValue{font-size:21px;font-weight:900;color:#0b1f3a}
+.weekSummaryDetails{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.weekSummaryDetail{background:#fff;border:1px solid #f1e7b4;border-radius:10px;padding:9px}
+.weekSummaryDetail small{display:block;color:#64748b;font-size:10px}
+.weekSummaryDetail b{display:block;margin-top:4px;font-size:14px}
+@media(max-width:480px){.employeeCardActions{grid-template-columns:1fr 1fr}.weekPickerControls{grid-template-columns:40px minmax(0,1fr) 40px}}
+</style>
+
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -224,7 +282,7 @@ body{overflow-x:hidden}
 <div class="card">
 <label>Semana</label><input id="weekStart" type="date" onchange="renderFuncionarios()">
 <button type="button" class="btn light full" onclick="goCurrentWeek()">↻ Ir para semana atual</button>
-<div class="muted" style="margin-top:7px">As semanas anteriores ficam guardadas no histórico. Se lançar errado, você pode corrigir os dias, reabrir ou apagar a semana e fechar novamente.</div>
+<div class="muted" style="margin-top:7px">As semanas anteriores ficam guardadas no histórico abaixo. Clique em uma semana para ver quem trabalhou e os dias anotados.</div>
 </div>
 <div id="weekPayrollSummary" class="card weekPayrollSummary"></div>
 <button type="button" class="btn green full" onclick="closeCurrentWeek()">✓ Conferir e fechar semana</button>
@@ -552,22 +610,24 @@ function financialMovements(id){
 function openFinancialReport(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return;
   const rows=financialMovements(id), totalDespesas=expenses(o), totalMaoObra=labor(o);
-  const table=rows.length?'<div style="overflow-x:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead><tbody>'+
-    rows.map(x=>'<tr><td>'+fmtDate(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td style="text-align:right;font-weight:700;white-space:nowrap">'+brl(x.amount)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">Nenhuma movimentação registrada nesta obra.</div>';
-  openModal('Relatório financeiro',
-    '<div class="reportSummary">'+
-    '<div class="reportKpi"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div>'+
-    '<div class="reportKpi"><small>Total recebido</small><b class="greenText">'+brl(received(o))+'</b></div>'+
-    '<div class="reportKpi"><small>Total retirado</small><b>'+brl(totalDespesas+totalMaoObra)+'</b><small>Despesas: '+brl(totalDespesas)+' • Mão de obra: '+brl(totalMaoObra)+'</small></div>'+
-    '<div class="reportKpi"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
-    '<div class="row" style="margin:12px 0;flex-wrap:wrap">'+
-    '<button type="button" class="btn green" style="flex:1" onclick="openFinancialMovementForm(\''+id+'\')">+ Nova movimentação</button>'+
-    '<button type="button" class="btn light" style="flex:1" onclick="printFinancialReport(\''+id+'\')">🖨️ PDF / Imprimir</button></div>'+
-    '<button type="button" class="btn light full" onclick="exportFinancialCsv(\''+id+'\')">📥 Exportar planilha (CSV)</button>'+
-    '<div class="card" style="margin-top:12px"><b>Movimentações da obra</b>'+table+'</div>'+
-    '<div class="muted" style="margin-top:8px">O saldo restante segue o cálculo atual: valor total menos recebimentos e despesas. A mão de obra aparece no total retirado, mas não é descontada novamente do saldo.</div>',
+  const table=rows.length?rows.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td>'+brl(x.amount)+'</td></tr>').join(''):'<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Nenhuma movimentação registrada nesta obra.</td></tr>';
+  openModal('RELATÓRIO FINANCEIRO — '+o.nome,
+    '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • '+rows.length+' movimentação(ões)</div><div class="muted">Gerado em: '+fmtDate(today())+'</div></div>'+ 
+    '<div class="reportGrid">'+
+    '<div class="reportCell"><small>Valor total da obra</small><strong>'+brl(totalObra(o))+'</strong></div>'+
+    '<div class="reportCell"><small>Total recebido</small><strong style="color:#16803c">'+brl(received(o))+'</strong></div>'+
+    '<div class="reportCell"><small>Total retirado</small><strong>'+brl(totalDespesas+totalMaoObra)+'</strong><small style="margin-top:5px;text-transform:none;letter-spacing:0">Despesas '+brl(totalDespesas)+' • Mão de obra '+brl(totalMaoObra)+'</small></div>'+
+    '<div class="reportCell"><small>Saldo restante</small><strong>'+brl(saldoObra(o))+'</strong></div></div>'+
+    '<div class="reportToolbar">'+
+    '<button type="button" class="btn green" onclick="openFinancialMovementForm(&quot;'+id+'&quot;)">＋ Nova movimentação</button>'+
+    '<button type="button" class="btn light" onclick="printFinancialReport(&quot;'+id+'&quot;)">▣ Gerar PDF</button></div>'+
+    '<div class="reportSheet"><div class="reportSheetTitle"><span>EXTRATO DE MOVIMENTAÇÕES</span><span style="font-size:11px;font-weight:500">'+esc(o.nome)+'</span></div><div class="reportTableWrap"><table><thead><tr><th style="width:42px">Nº</th><th style="width:100px">Data</th><th>Descrição</th><th style="width:125px">Tipo</th><th style="width:135px">Valor (R$)</th></tr></thead><tbody>'+table+'</tbody></table></div></div>'+
+    '<div class="reportNote">Critério do saldo: valor total da obra menos recebimentos e despesas. A mão de obra aparece no total retirado, mas não é descontada novamente do saldo, para evitar duplicidade.</div>',
     'Fechar',function(){closeModal();});
+  document.getElementById('appModal').classList.add('reportModal');
+  document.querySelector('#appModal .modalBox > .row').classList.add('modalFooter');
 }
+
 function openFinancialMovementForm(id){
   openModal('Nova movimentação',
     '<label>Data (preencha manualmente)</label><input id="fmDate" type="date" required>'+
@@ -607,16 +667,6 @@ function printFinancialReport(id){
   const w=window.open('','_blank');if(!w)return toast('Permita pop-ups para gerar o relatório');
   w.document.open();w.document.write(financialReportDocument(id));w.document.close();
 }
-function exportFinancialCsv(id){
-  const o=db.obras.find(x=>x.id===id);if(!o)return;
-  const rows=financialMovements(id),cell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const data=[['Data','Descrição','Tipo','Valor'],...rows.map(x=>[fmtDate(x.date),x.description,x.type,x.amount])];
-  const csv='\ufeff'+data.map(r=>r.map(cell).join(';')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='relatorio-financeiro-'+String(o.nome).replace(/[^a-z0-9_-]+/gi,'-')+'.csv';
-  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Planilha exportada');
-}
-
 function renderReceber(){
  fillSelect('rObra');rData.value=rData.value||today();
  receberList.innerHTML=db.recebimentos.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card">
@@ -685,22 +735,54 @@ function closeCurrentWeek(){
       save();closeModal();renderFuncionarios();renderResumo();toast(count?'Semana fechada e lançada nas obras':'Semana já estava paga');
     });
 }
-function renderWeekHistory(){
-  const weeks={};
-  db.pagamentos.filter(x=>x.tipo==='fechamento').forEach(x=>{
-    weeks[x.week]=weeks[x.week]||{};
-    weeks[x.week][x.obraId]=(weeks[x.week][x.obraId]||0)+x.valor;
+function getWeeksWithEntries(){
+  const weeks=new Set();
+  (db.funcionarios||[]).forEach(f=>{
+    const suffix='_'+f.id;
+    Object.keys(db.jornadas||{}).forEach(k=>{
+      if(k.endsWith(suffix)){
+        const week=k.slice(0,-suffix.length);
+        const j=db.jornadas[k]||{};
+        if(Object.values(j).some(v=>jornadaSlots(v).length)) weeks.add(week);
+      }
+    });
   });
-  const keys=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+  return [...weeks].sort((a,b)=>b.localeCompare(a));
+}
+function renderWeekHistory(){
+  const keys=getWeeksWithEntries();
   if(!keys.length){
-    weekHistory.innerHTML='<b>Histórico de semanas</b><div class="muted" style="margin-top:6px">As semanas pagas aparecerão aqui.</div>';
+    weekHistory.innerHTML='<b>📚 Histórico das semanas</b><div class="muted" style="margin-top:6px">As semanas com dias anotados aparecerão aqui.</div>';
     return;
   }
-  weekHistory.innerHTML='<div class="between row"><b>📋 Histórico de semanas</b><span class="muted">'+keys.length+' semana(s)</span></div>'+
-    keys.slice(0,8).map(w=>{
-      const total=Object.values(weeks[w]).reduce((a,v)=>a+v,0);
-      return `<div class="historyWeek"><div class="between row"><div><b>Semana de ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</b><div class="muted" style="margin-top:3px">${Object.entries(weeks[w]).map(([oid,v])=>esc(obraName(oid))+' '+brl(v)).join(' • ')}</div></div><b>${brl(total)}</b></div><div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn light" style="flex:1" onclick="reabrirSemana('${w}')">✏️ Corrigir semana</button><button type="button" class="btn red" style="flex:1" onclick="excluirSemana('${w}')">🗑️ Apagar semana</button></div></div>`;
-    }).join('');
+  weekHistory.innerHTML='<div class="between row"><b>📚 Histórico das semanas</b><span class="muted">'+keys.length+' semana(s)</span></div>'+keys.map(w=>{
+    const workers=(db.funcionarios||[]).map(f=>({f,c:calcEmployee(f.id,w)})).filter(x=>x.c.days>0);
+    const total=workers.reduce((sum,x)=>sum+x.c.total,0);
+    const paid=workers.length>0&&workers.every(x=>weekPaid(x.f.id,w));
+    return `<div class="historyWeek" style="border-top:1px solid #e2e8f0;padding:10px 0">
+      <button type="button" class="btn light full" style="display:flex;justify-content:space-between;align-items:center;text-align:left;gap:8px" onclick="toggleWeekHistory('${w}')">
+        <span><b>Semana ${fmtDate(w)} a ${fmtDate(addDays(w,6))}</b><small style="display:block;font-weight:400;color:#64748b;margin-top:3px">${workers.length} funcionário(s) com anotações • ${paid?'Paga':'Pagamento pendente ou parcial'}</small></span>
+        <span style="white-space:nowrap;font-weight:800">${brl(total)}　⌄</span>
+      </button>
+      <div id="weekHistoryDetail_${w}" style="display:none;padding:8px 2px 2px">
+        ${workers.map(({f,c})=>{
+          const j=jornada(f.id,w);
+          const rows=days.map((day,i)=>{
+            const slots=jornadaSlots(j[i]);
+            if(!slots.length)return '';
+            const lines=slots.map(slot=>`<div class="between row" style="gap:8px;margin-top:4px"><span>${esc(obraName(slot.obraId))} • ${Number(slot.fator).toLocaleString('pt-BR')} diária(s)</span><b>${brl(f.diaria*Number(slot.fator))}</b></div>`).join('');
+            return `<div style="padding:7px 0;border-bottom:1px solid #eef2f7"><div><b>${day}</b> <span class="muted">${fmtDate(addDays(w,i))}</span></div>${lines}</div>`;
+          }).filter(Boolean).join('');
+          return `<div class="card" style="margin:8px 0;background:#f8fafc"><div class="between row"><b>👷 ${esc(f.nome)}</b><b>${brl(c.total)}</b></div><div class="muted" style="margin:3px 0 6px">${c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})} diária(s) • ${weekPaid(f.id,w)?'✓ Semana paga':'Pagamento não fechado'}</div>${rows}</div>`;
+        }).join('')}
+        <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn light" style="flex:1" onclick="reabrirSemana('${w}')">✏️ Reabrir semana</button><button type="button" class="btn red" style="flex:1" onclick="excluirSemana('${w}')">🗑️ Apagar pagamento</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleWeekHistory(week){
+  const el=document.getElementById('weekHistoryDetail_'+week);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 function excluirSemana(w){
   const pagos=db.pagamentos.filter(x=>x.tipo==='fechamento'&&x.week===w);
@@ -722,74 +804,33 @@ function calcWeekByObra(week){
   const by={};
   db.funcionarios.forEach(f=>{
     const c=calcEmployee(f.id,week);
-    Object.entries(c.by).forEach(([obraId,v])=>{
-      by[obraId]=(by[obraId]||0)+v;
-    });
+    Object.entries(c.by).forEach(([obraId,v])=>{by[obraId]=(by[obraId]||0)+v});
   });
   return by;
 }
 function renderWeekPayrollSummary(week){
-  const by=calcWeekByObra(week);
-  const total=Object.values(by).reduce((a,v)=>a+v,0);
-  const rows=Object.entries(by);
-  if(!rows.length){
-    weekPayrollSummary.innerHTML='<b>Fechamento da semana</b><div class="muted" style="margin-top:6px">Lance os dias dos funcionários para ver automaticamente quanto cada obra deve pagar.</div>';
-    return;
-  }
-  weekPayrollSummary.innerHTML=
-    '<div class="between row"><b>💰 Valor da mão de obra da semana</b><b>'+brl(total)+'</b></div>'+
+  const by=calcWeekByObra(week),total=Object.values(by).reduce((a,v)=>a+v,0),rows=Object.entries(by);
+  if(!rows.length){weekPayrollSummary.innerHTML='<b>Fechamento da semana</b><div class="muted" style="margin-top:6px">Lance os dias dos funcionários para ver automaticamente quanto cada obra deve pagar.</div>';return;}
+  weekPayrollSummary.innerHTML='<div class="between row"><b>💰 Valor da mão de obra da semana</b><b>'+brl(total)+'</b></div>'+
     '<div class="muted" style="margin:5px 0 10px">Use este total como referência para pedir o pagamento ao cliente. Quando ele pagar, registre em Recebimentos; o valor será descontado do contrato.</div>'+
     rows.map(([oid,v])=>`<div class="weekObraRow"><span>🏗️ ${esc(obraName(oid))}</span><b>${brl(v)}</b></div>`).join('')+
     '<div class="totalline"><span>Total geral da semana</span><span>'+brl(total)+'</span></div>';
 }
 function renderFuncionarios(){
   weekStart.value=weekStart.value||monday();
-  let w=weekStart.value;
+  const w=weekStart.value;
   renderWeekPayrollSummary(w);
   renderWeekHistory();
   funcList.innerHTML=db.funcionarios.map(f=>{
-    let c=calcEmployee(f.id,w), paid=weekPaid(f.id,w);
-    let resumo=Object.entries(c.by).map(([oid,v])=>`${esc(obraName(oid))}: ${brl(v)}`).join(' • ');
+    const c=calcEmployee(f.id,w),paid=weekPaid(f.id,w);
+    const resumo=Object.entries(c.by).map(([oid,v])=>`${esc(obraName(oid))}: ${brl(v)}`).join(' • ');
     return `<div class="employee compactEmployee">
-      <div class="between row">
-        <div>
-          <b>${esc(f.nome)}</b>
-          <div class="muted">Diária: ${brl(f.diaria)} • ${c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})} diária(s) equivalente(s)${c.fullDays?' • '+c.fullDays+' inteiro(s)':''}${c.halfDays?' • '+c.halfDays+' meio(s)':''}</div>
-        </div>
-        <b class="employeeTotal">${brl(c.total)}</b>
-      </div>
+      <div class="between row"><div><b>${esc(f.nome)}</b><div class="muted">Diária: ${brl(f.diaria)} • ${c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})} diária(s) equivalente(s)${c.fullDays?' • '+c.fullDays+' inteiro(s)':''}${c.halfDays?' • '+c.halfDays+' meio(s)':''}</div></div><b class="employeeTotal">${brl(c.total)}</b></div>
       <div class="muted employeeResumo">${resumo||'Nenhum dia lançado nesta semana.'}</div>
-      <div class="row employeeActions">
-        <button type="button" class="btn light" style="flex:1" onclick="openEmployeeWeek('${f.id}')">📅 Dias</button>
-        <button type="button" class="btn ${paid?'light':'green'}" style="flex:1" ${paid?'disabled':''} onclick="payWeek('${f.id}','${w}')">${paid?'✓ Paga':'💵 Pagar'}</button>
-        <button type="button" class="btn light employeeEditBtn" onclick="editFuncionario('${f.id}')">✏️</button>
-        <button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">🗑️</button>
-      </div>
-      <button type="button" class="btn light full" onclick="openEmployeeHistory('${f.id}','${w}')">📚 Ver histórico de semanas deste funcionário</button>
+      <div class="row employeeActions"><button type="button" class="btn light" style="flex:1" onclick="openEmployeeWeek('${f.id}')">📅 Dias</button><button type="button" class="btn ${paid?'light':'green'}" style="flex:1" ${paid?'disabled':''} onclick="payWeek('${f.id}','${w}')">${paid?'✓ Paga':'💵 Pagar'}</button><button type="button" class="btn light employeeEditBtn" onclick="editFuncionario('${f.id}')">✏️</button><button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">🗑️</button></div>
     </div>`;
-  }).join('')||'<div class="empty">Cadastre os funcionários.</div>'
+  }).join('')||'<div class="empty">Cadastre os funcionários.</div>';
 }
-function openEmployeeHistory(fid,week){
-  const f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
-  const w=monday(new Date((week||weekStart.value||monday())+'T12:00:00'));
-  const j=jornada(fid,w);
-  const c=calcEmployee(fid,w);
-  const paid=weekPaid(fid,w);
-  const dayRows=days.map((name,i)=>{
-    const date=addDays(w,i), slots=jornadaSlots(j[i]);
-    if(!slots.length)return `<div class="historyWeek"><b>${name}</b><div class="muted">${fmtDate(date)} • Não trabalhou</div></div>`;
-    const lines=slots.map(slot=>`<div class="between row" style="gap:8px;margin-top:5px"><span>${esc(obraName(slot.obraId))} • ${Number(slot.fator).toLocaleString('pt-BR')} diária(s)</span><b>${brl(f.diaria*Number(slot.fator))}</b></div>`).join('');
-    const dayTotal=slots.reduce((sum,slot)=>sum+f.diaria*Number(slot.fator),0);
-    return `<div class="historyWeek"><div class="between row"><b>${name}</b><b>${brl(dayTotal)}</b></div><div class="muted">${fmtDate(date)}</div>${lines}</div>`;
-  }).join('');
-  openModal('Histórico • '+esc(f.nome),
-    '<div class="card" style="margin-bottom:10px"><label>Escolher uma data da semana</label><input type="date" id="employeeHistoryDate" value="'+w+'" onchange="openEmployeeHistory(&quot;'+fid+'&quot;,this.value)">'+
-    '<div class="row" style="margin-top:9px"><button type="button" class="btn light" style="flex:1" onclick="openEmployeeHistory(&quot;'+fid+'&quot;,&quot;'+addDays(w,-7)+'&quot;)">‹ Semana anterior</button><button type="button" class="btn light" style="flex:1" onclick="openEmployeeHistory(&quot;'+fid+'&quot;,&quot;'+addDays(w,7)+'&quot;)">Próxima semana ›</button></div></div>'+
-    '<div class="card"><div class="between row"><b>'+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</b><span class="chip">'+(paid?'✓ Semana paga':'Em aberto')+'</span></div><div class="grid" style="margin-top:10px"><div><div class="muted">Diárias</div><b>'+c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})+'</b></div><div><div class="muted">Total da semana</div><b>'+brl(c.total)+'</b></div></div></div>'+
-    '<div class="card"><b>Detalhamento por dia</b>'+dayRows+'</div>',
-    'Fechar',closeModal);
-}
-
 function openEmployeeWeek(fid){
   let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
   let w=weekStart.value||monday(), j=jornada(fid,w);
@@ -988,7 +1029,7 @@ function openModal(title, body, confirmText, callback){
 }
 function closeModal(){
   const m=document.getElementById('appModal');
-  m.classList.remove('show');m.setAttribute('aria-hidden','true');
+  m.classList.remove('show','reportModal');m.querySelector('.modalBox > .row')?.classList.remove('modalFooter');m.setAttribute('aria-hidden','true');
 }
 function mobileAddAcrescimo(id){
   openModal('Adicionar acréscimo',
