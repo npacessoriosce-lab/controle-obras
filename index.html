@@ -508,7 +508,7 @@ function addAcrescimo(id){
 }
 function addRecebimento(){
  let obra=rObra.value,v=Number(rValor.value),data=rData.value||today();if(!obra||!v)return toast('Preencha obra e valor');
- db.recebimentos.push({id:uid(),obraId:obra,valor:v,data});save();rValor.value='';toast('Recebimento registrado');renderAll()
+ db.recebimentos.push({id:uid(),obraId:obra,valor:v,data,descricao:'Mão de obra'});save();rValor.value='';toast('Recebimento registrado');renderAll()
 }
 
 function editFuncionario(id){
@@ -580,7 +580,7 @@ alerts.innerHTML=alertRows.length?alertRows.map(x=>`<div style="padding:7px 0;bo
 }
 function renderObras(){
  let el=obrasList;if(!db.obras.length){el.innerHTML='<div class="empty">Nenhuma obra cadastrada.</div>';return}
- el.innerHTML=db.obras.map(o=>{let tot=totalObra(o),rec=received(o),cust=labor(o)+expenses(o),rest=saldoObra(o),pct=tot?Math.min(100,(rec+cust)/tot*100):0;
+ el.innerHTML=db.obras.map(o=>{let tot=totalObra(o),rec=received(o),rest=saldoObra(o),pct=tot?Math.min(100,(rec+expenses(o))/tot*100):0;
  return `<div class="card" onclick="openObra('${o.id}')"><div class="between row"><div><div class="obra-title">${esc(o.nome)}</div><div class="muted">${esc(o.cliente||'Sem cliente')}</div></div><span>›</span></div><div class="progress"><div style="width:${pct}%"></div></div><div class="grid"><div><div class="muted">Total</div><b>${brl(tot)}</b></div><div><div class="muted">A receber</div><b>${brl(rest)}</b></div></div></div>`}).join('')
 }
 function openObra(id){
@@ -612,7 +612,7 @@ function openObra(id){
 
 function financialMovements(id){
   const rows=[];
-  db.recebimentos.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Recebimento do cliente',type:'Recebimento',amount:Number(x.valor)||0}));
+  db.recebimentos.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Mão de obra',type:'Mão de obra',amount:Number(x.valor)||0}));
   db.despesas.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Despesa da obra',type:'Despesa',amount:Number(x.valor)||0}));
   // Consolida os pagamentos semanais de todos os funcionários da mesma obra/data
   // em uma única linha, evitando várias linhas de mão de obra com a mesma data.
@@ -620,7 +620,7 @@ function financialMovements(id){
   db.pagamentos.filter(x=>x.obraId===id).forEach(x=>{
     const date=x.data||x.week||'';
     const key=[date,x.week||'manual'].join('|');
-    if(!laborGroups[key])laborGroups[key]={id:'mao-'+key,date,description:x.week?'Mão de obra — semana de '+fmtDate(x.week):'Mão de obra',type:'Mão de obra',amount:0,count:0};
+    if(!laborGroups[key])laborGroups[key]={id:'mao-'+key,date,description:x.week?'Pagamento de funcionários — semana de '+fmtDate(x.week):'Pagamento de funcionários',type:'Pagamento de funcionários',amount:0,count:0};
     laborGroups[key].amount+=Number(x.valor)||0;
     laborGroups[key].count++;
   });
@@ -634,7 +634,7 @@ function financialTableRows(rows, includeNumber=true){
 }
 function openFinancialReport(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return;
-  const rows=financialMovements(id), recebidoTotal=expenses(o)+labor(o);
+  const rows=financialMovements(id), recebidoTotal=received(o)+expenses(o);
   const table=financialTableRows(rows,true);
   openModal('RELATÓRIO FINANCEIRO — '+o.nome,
     '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • '+rows.length+' movimentação(ões)</div><div class="muted">Gerado em: '+fmtDate(today())+'</div></div>'+ 
@@ -644,41 +644,19 @@ function openFinancialReport(id){
     '<div class="reportCell"><small>Saldo restante</small><strong>'+brl(saldoObra(o))+'</strong></div>'+
     '</div>'+
     '<div class="reportToolbar">'+
-    '<button type="button" class="btn green" onclick="openFinancialMovementForm(&quot;'+id+'&quot;)">＋ Nova movimentação</button>'+
-    '<button type="button" class="btn light" onclick="printFinancialReport(&quot;'+id+'&quot;)">▣ Gerar PDF</button></div>'+
+    '<button type="button" class="btn light" onclick="closeModal()">← Voltar à obra</button>'+
+    '<button type="button" class="btn green" onclick="printFinancialReport(&quot;'+id+'&quot;)">▣ Gerar PDF</button></div>'+
     '<div class="reportSheet"><div class="reportSheetTitle"><span>EXTRATO DE MOVIMENTAÇÕES</span><span style="font-size:11px;font-weight:500">'+esc(o.nome)+'</span></div><div class="reportTableWrap"><table><thead><tr><th style="width:42px">Nº</th><th style="width:100px">Data</th><th>Descrição</th><th style="width:125px">Tipo</th><th style="width:135px">Valor (R$)</th></tr></thead><tbody>'+table+'</tbody></table></div></div>'+
-    '<div class="reportNote">Recebido total reúne os valores lançados em mão de obra e despesas. O saldo restante continua calculado pelo valor total da obra menos os recebimentos de clientes e as despesas.</div>',
+    '<div class="reportNote">Relatório atualizado automaticamente com os lançamentos da obra: Receber (mão de obra) e Despesas. Pagamentos dos funcionários ficam separados e não entram no recebido total.</div>',
     'Fechar',function(){closeModal();});
   document.getElementById('appModal').classList.add('reportModal');
   document.querySelector('#appModal .modalBox > .row').classList.add('modalFooter');
 }
 
-function openFinancialMovementForm(id){
-  openModal('Nova movimentação',
-    '<label>Data (preencha manualmente)</label><input id="fmDate" type="date" required>'+
-    '<label>Tipo</label><select id="fmType"><option value="recebimento">Recebimento</option><option value="despesa">Despesa</option><option value="mao">Mão de obra</option></select>'+
-    '<label>Descrição</label><input id="fmDesc" placeholder="Ex.: pagamento da semana, compra de material...">'+
-    '<label>Valor (R$)</label><input id="fmValue" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">',
-    'Salvar movimentação',function(){
-      const date=document.getElementById('fmDate').value,type=document.getElementById('fmType').value;
-      const desc=document.getElementById('fmDesc').value.trim(),value=Number(document.getElementById('fmValue').value);
-      if(!date)return toast('Informe a data da movimentação');
-      if(!isFinite(value)||value<=0)return toast('Informe um valor válido');
-      if(type==='recebimento'){
-        db.recebimentos.push({id:uid(),obraId:id,valor:value,data:date,descricao:desc||'Recebimento do cliente'});
-      }else if(type==='despesa'){
-        if(!desc)return toast('Informe a descrição da despesa');
-        db.despesas.push({id:uid(),obraId:id,tipo:'outros',descricao:desc,valor:value,data:date});
-      }else{
-        if(!desc)return toast('Informe a descrição da mão de obra');
-        db.pagamentos.push({id:uid(),tipo:'manual',obraId:id,valor:value,data:date,descricao:desc,origem:'relatorio-financeiro'});
-      }
-      save();closeModal();toast('Movimentação registrada');openFinancialReport(id);renderAll();
-    });
-}
+/* Movimentações são lançadas somente nas telas principais da obra (Receber e Despesas). O relatório é apenas uma leitura desses dados. */
 function financialReportDocument(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return '';
-  const rows=financialMovements(id), recebidoTotal=expenses(o)+labor(o);
+  const rows=financialMovements(id), recebidoTotal=received(o)+expenses(o);
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório financeiro - '+esc(o.nome)+'</title><style>'+
   '@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#0b1f3a;margin:22px;font-size:12px}h1{font-size:22px;margin:0;letter-spacing:.4px}.head{border-bottom:4px solid #f5c400;padding-bottom:12px;margin-bottom:14px}.muted{color:#64748b;font-size:11px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.k{border:1px solid #cbd5e1;border-radius:7px;padding:10px;background:#f8fafc}.k small{display:block;color:#64748b;font-size:10px}.k b{display:block;font-size:16px;margin-top:5px}h3{margin:14px 0 6px;font-size:14px}.sheet{border:1px solid #cbd5e1;border-radius:6px;overflow:hidden}table{width:100%;border-collapse:collapse;font-size:11px;margin:0;table-layout:fixed}thead{display:table-header-group}th,td{text-align:left;padding:8px 7px;border:1px solid #dbe2ea;overflow-wrap:anywhere}th{background:#0b1f3a;color:white;font-size:10px;text-transform:uppercase;letter-spacing:.3px}tbody tr:nth-child(even){background:#f4f7fb}tbody tr{break-inside:avoid}.right{text-align:right}.note{font-size:10px;color:#64748b;margin-top:12px;line-height:1.45}.noPrint button{background:#0b1f3a;color:#fff;border:0;border-radius:6px;padding:9px 14px}@media print{body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.noPrint{display:none}.sheet{overflow:visible}}'+'</style></head><body>'+
   '<div class="noPrint" style="margin-bottom:16px"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div>'+
@@ -686,7 +664,7 @@ function financialReportDocument(id){
   '<div class="cards"><div class="k"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div><div class="k"><small>Recebido total</small><b>'+brl(recebidoTotal)+'</b><small>Mão de obra + despesas</small></div><div class="k"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
   '<h3>Movimentações</h3><div class="sheet"><table><thead><tr><th style="width:15%">Data</th><th style="width:40%">Descrição</th><th style="width:20%">Tipo</th><th class="right" style="width:25%">Valor</th></tr></thead><tbody>'+
   financialTableRows(rows,false)+
-  '</tbody></table></div><div class="note">Recebido total reúne os valores lançados em mão de obra e despesas. O saldo restante continua calculado pelo valor total da obra menos os recebimentos de clientes e as despesas.</div></body></html>';
+  '</tbody></table></div><div class="note">Relatório atualizado automaticamente com os lançamentos da obra: Receber (mão de obra) e Despesas. Pagamentos dos funcionários ficam separados e não entram no recebido total.</div></body></html>';
 }
 function printFinancialReport(id){
   const w=window.open('','_blank');if(!w)return toast('Permita pop-ups para gerar o relatório');
