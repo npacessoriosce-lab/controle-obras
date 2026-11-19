@@ -280,9 +280,19 @@ body{overflow-x:hidden}
 <div class="row" style="margin-top:10px"><button class="btn green" style="flex:1" onclick="addFuncionario()">Salvar</button><button class="btn light" onclick="hideForm('funcForm')">Cancelar</button></div>
 </div>
 <div class="card">
-<label>Semana</label><input id="weekStart" type="date" onchange="renderFuncionarios()">
+<label>Semana</label>
+<div class="row" style="gap:6px">
+  <button type="button" class="btn light" style="padding:10px 13px" onclick="changeEmployeeWeek(-7)" aria-label="Semana anterior">‹</button>
+  <input id="weekStart" type="date" onchange="renderFuncionarios()" style="flex:1;min-width:0">
+  <button type="button" class="btn light" style="padding:10px 13px" onclick="changeEmployeeWeek(7)" aria-label="Próxima semana">›</button>
+</div>
 <button type="button" class="btn light full" onclick="goCurrentWeek()">↻ Ir para semana atual</button>
-<div class="muted" style="margin-top:7px">As semanas anteriores ficam guardadas no histórico abaixo. Clique em uma semana para ver quem trabalhou e os dias anotados.</div>
+<div class="muted" style="margin-top:7px">O lançamento continua igual. Consulte semanas antigas pelo histórico no final da tela.</div>
+</div>
+<div id="employeeStats" class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
+<div class="row" style="margin:8px 0;align-items:center">
+  <label style="margin:0;white-space:nowrap">Filtrar funcionário</label>
+  <select id="employeeFilter" onchange="renderFuncionarios()" style="flex:1;min-width:0"><option value="">Todos</option></select>
 </div>
 <div id="weekPayrollSummary" class="card weekPayrollSummary"></div>
 <button type="button" class="btn green full" onclick="closeCurrentWeek()">✓ Conferir e fechar semana</button>
@@ -604,13 +614,28 @@ function financialMovements(id){
   const rows=[];
   db.recebimentos.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Recebimento do cliente',type:'Recebimento',amount:Number(x.valor)||0}));
   db.despesas.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Despesa da obra',type:'Despesa',amount:Number(x.valor)||0}));
-  db.pagamentos.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||x.week||'',description:x.descricao||(x.tipo==='fechamento'?'Pagamento semanal de mão de obra':'Mão de obra'),type:'Mão de obra',amount:Number(x.valor)||0}));
-  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  // Consolida os pagamentos semanais de todos os funcionários da mesma obra/data
+  // em uma única linha, evitando várias linhas de mão de obra com a mesma data.
+  const laborGroups={};
+  db.pagamentos.filter(x=>x.obraId===id).forEach(x=>{
+    const date=x.data||x.week||'';
+    const key=[date,x.week||'manual'].join('|');
+    if(!laborGroups[key])laborGroups[key]={id:'mao-'+key,date,description:x.week?'Mão de obra — semana de '+fmtDate(x.week):'Mão de obra',type:'Mão de obra',amount:0,count:0};
+    laborGroups[key].amount+=Number(x.valor)||0;
+    laborGroups[key].count++;
+  });
+  Object.values(laborGroups).forEach(x=>{if(x.count>1)x.description+=' ('+x.count+' lançamentos)';rows.push(x)});
+  return rows.sort((a,b)=>String(a.date).localeCompare(String(b.date))||a.type.localeCompare(b.type,'pt-BR'));
+}
+function financialTableRows(rows, includeNumber=true){
+  if(!rows.length)return '<tr><td colspan="'+(includeNumber?5:4)+'" style="text-align:center;padding:24px;color:#64748b">Nenhuma movimentação registrada nesta obra.</td></tr>';
+  const groups={};rows.forEach((x,i)=>{const key=x.date||'sem-data';(groups[key]||(groups[key]=[])).push({...x,index:i+1})});
+  return Object.values(groups).map(group=>group.map((x,i)=>'<tr>'+(includeNumber?'<td>'+x.index+'</td>':'')+(i===0?'<td rowspan="'+group.length+'" style="vertical-align:middle;font-weight:700;white-space:nowrap">'+fmtDate(x.date)+'</td>':'')+'<td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td class="right">'+brl(x.amount)+'</td></tr>').join('')).join('');
 }
 function openFinancialReport(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return;
   const rows=financialMovements(id), totalDespesas=expenses(o), totalMaoObra=labor(o);
-  const table=rows.length?rows.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td>'+brl(x.amount)+'</td></tr>').join(''):'<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Nenhuma movimentação registrada nesta obra.</td></tr>';
+  const table=financialTableRows(rows,true);
   openModal('RELATÓRIO FINANCEIRO — '+o.nome,
     '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • '+rows.length+' movimentação(ões)</div><div class="muted">Gerado em: '+fmtDate(today())+'</div></div>'+ 
     '<div class="reportGrid">'+
@@ -655,13 +680,13 @@ function financialReportDocument(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return '';
   const rows=financialMovements(id), td=expenses(o), tm=labor(o);
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório financeiro - '+esc(o.nome)+'</title><style>'+
-  'body{font-family:Arial,sans-serif;color:#0b1f3a;margin:28px}h1{font-size:22px;margin:0}.head{border-bottom:4px solid #f5c400;padding-bottom:14px;margin-bottom:18px}.muted{color:#64748b;font-size:12px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:18px 0}.k{border:1px solid #dbe2ea;border-radius:10px;padding:12px}.k small{display:block;color:#64748b}.k b{display:block;font-size:18px;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}th,td{text-align:left;padding:9px 6px;border-bottom:1px solid #e2e8f0}th{background:#0b1f3a;color:white}.right{text-align:right}.note{font-size:11px;color:#64748b;margin-top:18px}@media print{body{margin:12mm}.noPrint{display:none}}</style></head><body>'+
+  '@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#0b1f3a;margin:22px;font-size:12px}h1{font-size:22px;margin:0;letter-spacing:.4px}.head{border-bottom:4px solid #f5c400;padding-bottom:12px;margin-bottom:14px}.muted{color:#64748b;font-size:11px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.k{border:1px solid #cbd5e1;border-radius:7px;padding:10px;background:#f8fafc}.k small{display:block;color:#64748b;font-size:10px}.k b{display:block;font-size:16px;margin-top:5px}h3{margin:14px 0 6px;font-size:14px}.sheet{border:1px solid #cbd5e1;border-radius:6px;overflow:hidden}table{width:100%;border-collapse:collapse;font-size:11px;margin:0;table-layout:fixed}thead{display:table-header-group}th,td{text-align:left;padding:8px 7px;border:1px solid #dbe2ea;overflow-wrap:anywhere}th{background:#0b1f3a;color:white;font-size:10px;text-transform:uppercase;letter-spacing:.3px}tbody tr:nth-child(even){background:#f4f7fb}tbody tr{break-inside:avoid}.right{text-align:right}.note{font-size:10px;color:#64748b;margin-top:12px;line-height:1.45}.noPrint button{background:#0b1f3a;color:#fff;border:0;border-radius:6px;padding:9px 14px}@media print{body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.noPrint{display:none}.sheet{overflow:visible}}'+'</style></head><body>'+
   '<div class="noPrint" style="margin-bottom:16px"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div>'+
   '<div class="head"><h1>RELATÓRIO FINANCEIRO</h1><b>'+esc(o.nome)+'</b><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • Gerado em '+fmtDate(today())+'</div></div>'+
   '<div class="cards"><div class="k"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div><div class="k"><small>Total recebido</small><b>'+brl(received(o))+'</b></div><div class="k"><small>Total retirado</small><b>'+brl(td+tm)+'</b><small>Despesas: '+brl(td)+' • Mão de obra: '+brl(tm)+'</small></div><div class="k"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
-  '<h3>Movimentações</h3><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="right">Valor</th></tr></thead><tbody>'+
-  (rows.map(x=>'<tr><td>'+fmtDate(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td class="right">'+brl(x.amount)+'</td></tr>').join('')||'<tr><td colspan="4">Nenhuma movimentação registrada.</td></tr>')+
-  '</tbody></table><div class="note">O saldo restante considera valor total menos recebimentos e despesas. A mão de obra está demonstrada no total retirado, sem ser descontada novamente do saldo.</div></body></html>';
+  '<h3>Movimentações</h3><div class="sheet"><table><thead><tr><th style="width:15%">Data</th><th style="width:40%">Descrição</th><th style="width:20%">Tipo</th><th class="right" style="width:25%">Valor</th></tr></thead><tbody>'+
+  financialTableRows(rows,false)+
+  '</tbody></table></div><div class="note">O saldo restante considera valor total menos recebimentos e despesas. A mão de obra está demonstrada no total retirado, sem ser descontada novamente do saldo.</div></body></html>';
 }
 function printFinancialReport(id){
   const w=window.open('','_blank');if(!w)return toast('Permita pop-ups para gerar o relatório');
@@ -799,6 +824,7 @@ function reabrirSemana(w){
   db.pagamentos=db.pagamentos.filter(x=>!(x.tipo==='fechamento'&&x.week===w));
   save();weekStart.value=w;renderFuncionarios();toast('Semana reaberta. Corrija os dias e feche novamente');
 }
+function changeEmployeeWeek(days){const base=weekStart.value||monday();weekStart.value=addDays(base,days);renderFuncionarios()}
 function goCurrentWeek(){weekStart.value=monday();renderFuncionarios();toast('Semana atual selecionada')}
 function calcWeekByObra(week){
   const by={};
@@ -821,15 +847,32 @@ function renderFuncionarios(){
   const w=weekStart.value;
   renderWeekPayrollSummary(w);
   renderWeekHistory();
-  funcList.innerHTML=db.funcionarios.map(f=>{
-    const c=calcEmployee(f.id,w),paid=weekPaid(f.id,w);
+  const filter=document.getElementById('employeeFilter');
+  const selected=filter?filter.value:'';
+  if(filter){
+    const options='<option value="">Todos</option>'+db.funcionarios.map(f=>'<option value="'+esc(f.id)+'">'+esc(f.nome)+'</option>').join('');
+    if(filter.innerHTML!==options)filter.innerHTML=options;
+    filter.value=selected;
+  }
+  const weekData=db.funcionarios.map(f=>({f,c:calcEmployee(f.id,w),paid:weekPaid(f.id,w)}));
+  const active=weekData.filter(x=>x.c.days>0);
+  const paidCount=active.filter(x=>x.paid).length;
+  const pending=active.filter(x=>!x.paid);
+  const pendingValue=pending.reduce((sum,x)=>sum+x.c.total,0);
+  const stats=document.getElementById('employeeStats');
+  if(stats)stats.innerHTML=
+    '<div class="card kpi" style="padding:10px"><div class="label">Funcionários</div><div class="value">'+String(db.funcionarios.length).padStart(2,'0')+'</div></div>'+ 
+    '<div class="card kpi" style="padding:10px;background:#fff9e5"><div class="label">A pagar</div><div class="value" style="font-size:15px">'+brl(pendingValue)+'</div></div>'+ 
+    '<div class="card kpi" style="padding:10px;background:#ecfdf5"><div class="label">Pagos</div><div class="value">'+String(paidCount).padStart(2,'0')+'</div></div>';
+  const visible=weekData.filter(x=>!selected||x.f.id===selected);
+  funcList.innerHTML=visible.map(({f,c,paid})=>{
     const resumo=Object.entries(c.by).map(([oid,v])=>`${esc(obraName(oid))}: ${brl(v)}`).join(' • ');
     return `<div class="employee compactEmployee">
       <div class="between row"><div><b>${esc(f.nome)}</b><div class="muted">Diária: ${brl(f.diaria)} • ${c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})} diária(s) equivalente(s)${c.fullDays?' • '+c.fullDays+' inteiro(s)':''}${c.halfDays?' • '+c.halfDays+' meio(s)':''}</div></div><b class="employeeTotal">${brl(c.total)}</b></div>
       <div class="muted employeeResumo">${resumo||'Nenhum dia lançado nesta semana.'}</div>
       <div class="row employeeActions"><button type="button" class="btn light" style="flex:1" onclick="openEmployeeWeek('${f.id}')">📅 Dias</button><button type="button" class="btn ${paid?'light':'green'}" style="flex:1" ${paid?'disabled':''} onclick="payWeek('${f.id}','${w}')">${paid?'✓ Paga':'💵 Pagar'}</button><button type="button" class="btn light employeeEditBtn" onclick="editFuncionario('${f.id}')">✏️</button><button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">🗑️</button></div>
     </div>`;
-  }).join('')||'<div class="empty">Cadastre os funcionários.</div>';
+  }).join('')||'<div class="empty">'+(selected?'Nenhum funcionário encontrado.':'Cadastre os funcionários.')+'</div>';
 }
 function openEmployeeWeek(fid){
   let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
