@@ -1,4 +1,3 @@
-```
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -132,6 +131,13 @@ body{overflow-x:hidden}
 .receiptSign{margin-top:55px;text-align:center}
 .receiptSignLine{width:280px;border-top:1px solid #172033;margin:0 auto 8px}
 </style>
+<style>
+.reportSummary{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.reportKpi{border:1px solid #e2e8f0;border-radius:11px;padding:10px;background:#fff;min-width:0}
+.reportKpi small{display:block;color:#64748b;font-size:11px}
+.reportKpi b{display:block;font-size:16px;margin-top:5px;overflow-wrap:anywhere}
+.reportKpi small+small{margin-top:4px;line-height:1.4}
+</style>
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -165,7 +171,6 @@ body{overflow-x:hidden}
   <button type="button" class="sideBtn" data-tab="receber" onclick="go('receber');closeSidebar()">💰 <span>Receber</span></button>
   <button type="button" class="sideBtn" data-tab="funcionarios" onclick="go('funcionarios');closeSidebar()">👷 <span>Funcionários</span></button>
   <button type="button" class="sideBtn" data-tab="caixa" onclick="go('caixa');closeSidebar()">🧾 <span>Despesas</span></button>
-  <button type="button" class="sideBtn" data-tab="recebidos" onclick="go('recebidos');closeSidebar()">💰 <span>Recebidos</span></button>
   <div class="menuTitle lower">GERAL</div>
   <button type="button" class="sideBtn" onclick="openCompanySettings();closeSidebar()">🖼️ <span>Empresa / Logomarca</span></button>
   <button type="button" class="sideBtn" onclick="exportData();closeSidebar()">💾 <span>Backup</span></button>
@@ -242,12 +247,6 @@ body{overflow-x:hidden}
 <b>Backup</b><div class="muted" style="margin:5px 0 9px">Exporte seus dados para guardar uma cópia ou trocar de aparelho.</div>
 <div class="row"><button class="btn light" style="flex:1" onclick="exportData()">Exportar</button><label for="importInput" class="btn light" style="margin:0;flex:1;text-align:center">Importar</label><input id="importInput" class="file" type="file" accept=".json"></div>
 </div>
-</section>
-
-<section id="recebidos" class="screen">
-<h2>Recebidos</h2>
-<div class="card kpi"><div class="label">Total recebido de todos os clientes</div><div class="value greenText" id="totalRecebidos">R$ 0,00</div></div>
-<div id="recebidosPorObra"></div>
 </section>
 
 <section id="detalhe" class="screen">
@@ -532,6 +531,7 @@ function openObra(id){
    <button type="button" class="btn light obraAction" style="flex:1" data-action="orcamento" data-obra="${id}">✏️ Ajustar orçamento</button>
  </div>
  <button type="button" class="btn red full obraAction" data-action="excluir" data-obra="${id}">🗑️ Excluir obra</button>
+ <button type="button" class="btn green full" style="margin-top:8px" onclick="openFinancialReport('${id}')">📊 Relatório Financeiro</button>
  <div class="card"><b>Acréscimos / ajustes do orçamento</b>${ac.length?'<table><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr>'+ac.map(x=>`<tr><td>${fmtDate(x.data)}</td><td>${esc(x.descricao)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum acréscimo.</div>'}</div>
  <div class="card"><b>Recebimentos</b>${rr.length?'<table><tr><th>Data</th><th>Valor</th></tr>'+rr.map(x=>`<tr><td>${fmtDate(x.data)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhum recebimento.</div>'}</div>
  <div class="card"><b>Despesas</b>
@@ -541,6 +541,82 @@ function openObra(id){
  <span class="chip">📦 Outros: ${brl(dd.filter(x=>x.tipo==='outros'||!x.tipo).reduce((a,x)=>a+x.valor,0))}</span>
  </div>${dd.length?'<table><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr>'+dd.map(x=>`<tr><td>${fmtDate(x.data)}</td><td>${esc(x.descricao)}</td><td class="${x.valor<0?'redText':'greenText'}">${x.valor<0?'− ':''}${brl(Math.abs(x.valor))}</td></tr>`).join('')+'</table>':'<div class="empty">Nenhuma despesa.</div>'}</div>`
 }
+
+function financialMovements(id){
+  const rows=[];
+  db.recebimentos.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Recebimento do cliente',type:'Recebimento',amount:Number(x.valor)||0}));
+  db.despesas.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||'',description:x.descricao||'Despesa da obra',type:'Despesa',amount:Number(x.valor)||0}));
+  db.pagamentos.filter(x=>x.obraId===id).forEach(x=>rows.push({id:x.id,date:x.data||x.week||'',description:x.descricao||(x.tipo==='fechamento'?'Pagamento semanal de mão de obra':'Mão de obra'),type:'Mão de obra',amount:Number(x.valor)||0}));
+  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+}
+function openFinancialReport(id){
+  const o=db.obras.find(x=>x.id===id);if(!o)return;
+  const rows=financialMovements(id), totalDespesas=expenses(o), totalMaoObra=labor(o);
+  const table=rows.length?'<div style="overflow-x:auto"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead><tbody>'+
+    rows.map(x=>'<tr><td>'+fmtDate(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td style="text-align:right;font-weight:700;white-space:nowrap">'+brl(x.amount)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">Nenhuma movimentação registrada nesta obra.</div>';
+  openModal('Relatório financeiro',
+    '<div class="reportSummary">'+
+    '<div class="reportKpi"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div>'+
+    '<div class="reportKpi"><small>Total recebido</small><b class="greenText">'+brl(received(o))+'</b></div>'+
+    '<div class="reportKpi"><small>Total retirado</small><b>'+brl(totalDespesas+totalMaoObra)+'</b><small>Despesas: '+brl(totalDespesas)+' • Mão de obra: '+brl(totalMaoObra)+'</small></div>'+
+    '<div class="reportKpi"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
+    '<div class="row" style="margin:12px 0;flex-wrap:wrap">'+
+    '<button type="button" class="btn green" style="flex:1" onclick="openFinancialMovementForm(\''+id+'\')">+ Nova movimentação</button>'+
+    '<button type="button" class="btn light" style="flex:1" onclick="printFinancialReport(\''+id+'\')">🖨️ PDF / Imprimir</button></div>'+
+    '<button type="button" class="btn light full" onclick="exportFinancialCsv(\''+id+'\')">📥 Exportar planilha (CSV)</button>'+
+    '<div class="card" style="margin-top:12px"><b>Movimentações da obra</b>'+table+'</div>'+
+    '<div class="muted" style="margin-top:8px">O saldo restante segue o cálculo atual: valor total menos recebimentos e despesas. A mão de obra aparece no total retirado, mas não é descontada novamente do saldo.</div>',
+    'Fechar',function(){closeModal();});
+}
+function openFinancialMovementForm(id){
+  openModal('Nova movimentação',
+    '<label>Data (preencha manualmente)</label><input id="fmDate" type="date" required>'+
+    '<label>Tipo</label><select id="fmType"><option value="recebimento">Recebimento</option><option value="despesa">Despesa</option><option value="mao">Mão de obra</option></select>'+
+    '<label>Descrição</label><input id="fmDesc" placeholder="Ex.: pagamento da semana, compra de material...">'+
+    '<label>Valor (R$)</label><input id="fmValue" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">',
+    'Salvar movimentação',function(){
+      const date=document.getElementById('fmDate').value,type=document.getElementById('fmType').value;
+      const desc=document.getElementById('fmDesc').value.trim(),value=Number(document.getElementById('fmValue').value);
+      if(!date)return toast('Informe a data da movimentação');
+      if(!isFinite(value)||value<=0)return toast('Informe um valor válido');
+      if(type==='recebimento'){
+        db.recebimentos.push({id:uid(),obraId:id,valor:value,data:date,descricao:desc||'Recebimento do cliente'});
+      }else if(type==='despesa'){
+        if(!desc)return toast('Informe a descrição da despesa');
+        db.despesas.push({id:uid(),obraId:id,tipo:'outros',descricao:desc,valor:value,data:date});
+      }else{
+        if(!desc)return toast('Informe a descrição da mão de obra');
+        db.pagamentos.push({id:uid(),tipo:'manual',obraId:id,valor:value,data:date,descricao:desc,origem:'relatorio-financeiro'});
+      }
+      save();closeModal();toast('Movimentação registrada');openFinancialReport(id);renderAll();
+    });
+}
+function financialReportDocument(id){
+  const o=db.obras.find(x=>x.id===id);if(!o)return '';
+  const rows=financialMovements(id), td=expenses(o), tm=labor(o);
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório financeiro - '+esc(o.nome)+'</title><style>'+
+  'body{font-family:Arial,sans-serif;color:#0b1f3a;margin:28px}h1{font-size:22px;margin:0}.head{border-bottom:4px solid #f5c400;padding-bottom:14px;margin-bottom:18px}.muted{color:#64748b;font-size:12px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:18px 0}.k{border:1px solid #dbe2ea;border-radius:10px;padding:12px}.k small{display:block;color:#64748b}.k b{display:block;font-size:18px;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}th,td{text-align:left;padding:9px 6px;border-bottom:1px solid #e2e8f0}th{background:#0b1f3a;color:white}.right{text-align:right}.note{font-size:11px;color:#64748b;margin-top:18px}@media print{body{margin:12mm}.noPrint{display:none}}</style></head><body>'+
+  '<div class="noPrint" style="margin-bottom:16px"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div>'+
+  '<div class="head"><h1>RELATÓRIO FINANCEIRO</h1><b>'+esc(o.nome)+'</b><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • Gerado em '+fmtDate(today())+'</div></div>'+
+  '<div class="cards"><div class="k"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div><div class="k"><small>Total recebido</small><b>'+brl(received(o))+'</b></div><div class="k"><small>Total retirado</small><b>'+brl(td+tm)+'</b><small>Despesas: '+brl(td)+' • Mão de obra: '+brl(tm)+'</small></div><div class="k"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
+  '<h3>Movimentações</h3><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="right">Valor</th></tr></thead><tbody>'+
+  (rows.map(x=>'<tr><td>'+fmtDate(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+esc(x.type)+'</td><td class="right">'+brl(x.amount)+'</td></tr>').join('')||'<tr><td colspan="4">Nenhuma movimentação registrada.</td></tr>')+
+  '</tbody></table><div class="note">O saldo restante considera valor total menos recebimentos e despesas. A mão de obra está demonstrada no total retirado, sem ser descontada novamente do saldo.</div></body></html>';
+}
+function printFinancialReport(id){
+  const w=window.open('','_blank');if(!w)return toast('Permita pop-ups para gerar o relatório');
+  w.document.open();w.document.write(financialReportDocument(id));w.document.close();
+}
+function exportFinancialCsv(id){
+  const o=db.obras.find(x=>x.id===id);if(!o)return;
+  const rows=financialMovements(id),cell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const data=[['Data','Descrição','Tipo','Valor'],...rows.map(x=>[fmtDate(x.date),x.description,x.type,x.amount])];
+  const csv='\ufeff'+data.map(r=>r.map(cell).join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='relatorio-financeiro-'+String(o.nome).replace(/[^a-z0-9_-]+/gi,'-')+'.csv';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Planilha exportada');
+}
+
 function renderReceber(){
  fillSelect('rObra');rData.value=rData.value||today();
  receberList.innerHTML=db.recebimentos.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<div class="card">
@@ -689,9 +765,31 @@ function renderFuncionarios(){
         <button type="button" class="btn light employeeEditBtn" onclick="editFuncionario('${f.id}')">✏️</button>
         <button type="button" class="btn light employeeDeleteBtn" onclick="deleteFuncionario('${f.id}')">🗑️</button>
       </div>
+      <button type="button" class="btn light full" onclick="openEmployeeHistory('${f.id}','${w}')">📚 Ver histórico de semanas deste funcionário</button>
     </div>`;
   }).join('')||'<div class="empty">Cadastre os funcionários.</div>'
 }
+function openEmployeeHistory(fid,week){
+  const f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
+  const w=monday(new Date((week||weekStart.value||monday())+'T12:00:00'));
+  const j=jornada(fid,w);
+  const c=calcEmployee(fid,w);
+  const paid=weekPaid(fid,w);
+  const dayRows=days.map((name,i)=>{
+    const date=addDays(w,i), slots=jornadaSlots(j[i]);
+    if(!slots.length)return `<div class="historyWeek"><b>${name}</b><div class="muted">${fmtDate(date)} • Não trabalhou</div></div>`;
+    const lines=slots.map(slot=>`<div class="between row" style="gap:8px;margin-top:5px"><span>${esc(obraName(slot.obraId))} • ${Number(slot.fator).toLocaleString('pt-BR')} diária(s)</span><b>${brl(f.diaria*Number(slot.fator))}</b></div>`).join('');
+    const dayTotal=slots.reduce((sum,slot)=>sum+f.diaria*Number(slot.fator),0);
+    return `<div class="historyWeek"><div class="between row"><b>${name}</b><b>${brl(dayTotal)}</b></div><div class="muted">${fmtDate(date)}</div>${lines}</div>`;
+  }).join('');
+  openModal('Histórico • '+esc(f.nome),
+    '<div class="card" style="margin-bottom:10px"><label>Escolher uma data da semana</label><input type="date" id="employeeHistoryDate" value="'+w+'" onchange="openEmployeeHistory(&quot;'+fid+'&quot;,this.value)">'+
+    '<div class="row" style="margin-top:9px"><button type="button" class="btn light" style="flex:1" onclick="openEmployeeHistory(&quot;'+fid+'&quot;,&quot;'+addDays(w,-7)+'&quot;)">‹ Semana anterior</button><button type="button" class="btn light" style="flex:1" onclick="openEmployeeHistory(&quot;'+fid+'&quot;,&quot;'+addDays(w,7)+'&quot;)">Próxima semana ›</button></div></div>'+
+    '<div class="card"><div class="between row"><b>'+fmtDate(w)+' a '+fmtDate(addDays(w,6))+'</b><span class="chip">'+(paid?'✓ Semana paga':'Em aberto')+'</span></div><div class="grid" style="margin-top:10px"><div><div class="muted">Diárias</div><b>'+c.days.toLocaleString('pt-BR',{maximumFractionDigits:2})+'</b></div><div><div class="muted">Total da semana</div><b>'+brl(c.total)+'</b></div></div></div>'+
+    '<div class="card"><b>Detalhamento por dia</b>'+dayRows+'</div>',
+    'Fechar',closeModal);
+}
+
 function openEmployeeWeek(fid){
   let f=db.funcionarios.find(x=>x.id===fid); if(!f)return;
   let w=weekStart.value||monday(), j=jornada(fid,w);
@@ -814,7 +912,7 @@ function gerarRecibo(id){
   w.document.open();w.document.write(html);w.document.close();
 }
 
-function renderAll(){renderResumo();renderObras();renderReceber();renderFuncionarios();renderCaixa();renderRecebidos();document.getElementById('brandName').textContent=db.empresa||'Controle de Obras';if(db.logo){
+function renderAll(){renderResumo();renderObras();renderReceber();renderFuncionarios();renderCaixa();document.getElementById('brandName').textContent=db.empresa||'Controle de Obras';if(db.logo){
   logoBox.innerHTML=`<img src="${db.logo}">`;
   sideLogoBox.innerHTML=`<img src="${db.logo}">`;
 } else {
@@ -949,4 +1047,3 @@ document.addEventListener('pointerup',function(e){
 </script>
 </body>
 </html>
-```
