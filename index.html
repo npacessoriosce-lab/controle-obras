@@ -634,20 +634,20 @@ function financialTableRows(rows, includeNumber=true){
 }
 function openFinancialReport(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return;
-  const rows=financialMovements(id), totalDespesas=expenses(o), totalMaoObra=labor(o);
+  const rows=financialMovements(id), recebidoTotal=expenses(o)+labor(o);
   const table=financialTableRows(rows,true);
   openModal('RELATÓRIO FINANCEIRO — '+o.nome,
     '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • '+rows.length+' movimentação(ões)</div><div class="muted">Gerado em: '+fmtDate(today())+'</div></div>'+ 
     '<div class="reportGrid">'+
     '<div class="reportCell"><small>Valor total da obra</small><strong>'+brl(totalObra(o))+'</strong></div>'+
-    '<div class="reportCell"><small>Total recebido</small><strong style="color:#16803c">'+brl(received(o))+'</strong></div>'+
-    '<div class="reportCell"><small>Total retirado</small><strong>'+brl(totalDespesas+totalMaoObra)+'</strong><small style="margin-top:5px;text-transform:none;letter-spacing:0">Despesas '+brl(totalDespesas)+' • Mão de obra '+brl(totalMaoObra)+'</small></div>'+
-    '<div class="reportCell"><small>Saldo restante</small><strong>'+brl(saldoObra(o))+'</strong></div></div>'+
+    '<div class="reportCell"><small>Recebido total</small><strong style="color:#16803c">'+brl(recebidoTotal)+'</strong><small style="margin-top:5px;text-transform:none;letter-spacing:0">Mão de obra + despesas</small></div>'+
+    '<div class="reportCell"><small>Saldo restante</small><strong>'+brl(saldoObra(o))+'</strong></div>'+
+    '</div>'+
     '<div class="reportToolbar">'+
     '<button type="button" class="btn green" onclick="openFinancialMovementForm(&quot;'+id+'&quot;)">＋ Nova movimentação</button>'+
     '<button type="button" class="btn light" onclick="printFinancialReport(&quot;'+id+'&quot;)">▣ Gerar PDF</button></div>'+
     '<div class="reportSheet"><div class="reportSheetTitle"><span>EXTRATO DE MOVIMENTAÇÕES</span><span style="font-size:11px;font-weight:500">'+esc(o.nome)+'</span></div><div class="reportTableWrap"><table><thead><tr><th style="width:42px">Nº</th><th style="width:100px">Data</th><th>Descrição</th><th style="width:125px">Tipo</th><th style="width:135px">Valor (R$)</th></tr></thead><tbody>'+table+'</tbody></table></div></div>'+
-    '<div class="reportNote">Critério do saldo: valor total da obra menos recebimentos e despesas. A mão de obra aparece no total retirado, mas não é descontada novamente do saldo, para evitar duplicidade.</div>',
+    '<div class="reportNote">Recebido total reúne os valores lançados em mão de obra e despesas. O saldo restante continua calculado pelo valor total da obra menos os recebimentos de clientes e as despesas.</div>',
     'Fechar',function(){closeModal();});
   document.getElementById('appModal').classList.add('reportModal');
   document.querySelector('#appModal .modalBox > .row').classList.add('modalFooter');
@@ -678,15 +678,15 @@ function openFinancialMovementForm(id){
 }
 function financialReportDocument(id){
   const o=db.obras.find(x=>x.id===id);if(!o)return '';
-  const rows=financialMovements(id), td=expenses(o), tm=labor(o);
+  const rows=financialMovements(id), recebidoTotal=expenses(o)+labor(o);
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório financeiro - '+esc(o.nome)+'</title><style>'+
   '@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#0b1f3a;margin:22px;font-size:12px}h1{font-size:22px;margin:0;letter-spacing:.4px}.head{border-bottom:4px solid #f5c400;padding-bottom:12px;margin-bottom:14px}.muted{color:#64748b;font-size:11px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.k{border:1px solid #cbd5e1;border-radius:7px;padding:10px;background:#f8fafc}.k small{display:block;color:#64748b;font-size:10px}.k b{display:block;font-size:16px;margin-top:5px}h3{margin:14px 0 6px;font-size:14px}.sheet{border:1px solid #cbd5e1;border-radius:6px;overflow:hidden}table{width:100%;border-collapse:collapse;font-size:11px;margin:0;table-layout:fixed}thead{display:table-header-group}th,td{text-align:left;padding:8px 7px;border:1px solid #dbe2ea;overflow-wrap:anywhere}th{background:#0b1f3a;color:white;font-size:10px;text-transform:uppercase;letter-spacing:.3px}tbody tr:nth-child(even){background:#f4f7fb}tbody tr{break-inside:avoid}.right{text-align:right}.note{font-size:10px;color:#64748b;margin-top:12px;line-height:1.45}.noPrint button{background:#0b1f3a;color:#fff;border:0;border-radius:6px;padding:9px 14px}@media print{body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.noPrint{display:none}.sheet{overflow:visible}}'+'</style></head><body>'+
   '<div class="noPrint" style="margin-bottom:16px"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div>'+
   '<div class="head"><h1>RELATÓRIO FINANCEIRO</h1><b>'+esc(o.nome)+'</b><div class="muted">Cliente: '+esc(o.cliente||'Não informado')+' • Gerado em '+fmtDate(today())+'</div></div>'+
-  '<div class="cards"><div class="k"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div><div class="k"><small>Total recebido</small><b>'+brl(received(o))+'</b></div><div class="k"><small>Total retirado</small><b>'+brl(td+tm)+'</b><small>Despesas: '+brl(td)+' • Mão de obra: '+brl(tm)+'</small></div><div class="k"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
+  '<div class="cards"><div class="k"><small>Valor total da obra</small><b>'+brl(totalObra(o))+'</b></div><div class="k"><small>Recebido total</small><b>'+brl(recebidoTotal)+'</b><small>Mão de obra + despesas</small></div><div class="k"><small>Saldo restante</small><b>'+brl(saldoObra(o))+'</b></div></div>'+
   '<h3>Movimentações</h3><div class="sheet"><table><thead><tr><th style="width:15%">Data</th><th style="width:40%">Descrição</th><th style="width:20%">Tipo</th><th class="right" style="width:25%">Valor</th></tr></thead><tbody>'+
   financialTableRows(rows,false)+
-  '</tbody></table></div><div class="note">O saldo restante considera valor total menos recebimentos e despesas. A mão de obra está demonstrada no total retirado, sem ser descontada novamente do saldo.</div></body></html>';
+  '</tbody></table></div><div class="note">Recebido total reúne os valores lançados em mão de obra e despesas. O saldo restante continua calculado pelo valor total da obra menos os recebimentos de clientes e as despesas.</div></body></html>';
 }
 function printFinancialReport(id){
   const w=window.open('','_blank');if(!w)return toast('Permita pop-ups para gerar o relatório');
