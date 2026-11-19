@@ -1,0 +1,39 @@
+name: Supabase heartbeat
+
+on:
+  schedule:
+    # Quatro consultas por dia, a cada seis horas (UTC).
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar a tabela principal do sistema
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_ANON_KEY:-}" ]]; then
+            echo "::error::Configure os secrets SUPABASE_URL e SUPABASE_ANON_KEY no GitHub."
+            exit 1
+          fi
+
+          curl --silent --show-error --fail-with-body \
+            --get "${SUPABASE_URL}/rest/v1/controle_obras_dados" \
+            --data-urlencode "select=id" \
+            --data-urlencode "id=eq.1" \
+            --data-urlencode "limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"
+
+          echo
+          echo "Consulta periódica ao Supabase concluída."
